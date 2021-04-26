@@ -45,7 +45,7 @@ class KHPCPatchManager{
 		"kh2_sixth",
 	};
 	
-	static string version = "v0.0.3";
+	static string version = "v0.0.4";
     static void Main(string[] args){
 		if(!Directory.Exists("resources")){
 			string resourceName = ExecutingAssembly.GetManifestResourceNames().Single(str => str.EndsWith("hashpairs.zip"));
