@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Ionic.Zlib;
 using Ionic.Zip;
+using System.Collections.Generic;
 
 class KHPCPatchManager{
 	static Assembly ExecutingAssembly = Assembly.GetExecutingAssembly();
@@ -58,6 +59,7 @@ class KHPCPatchManager{
 		
 		Console.WriteLine($"KHPCPatchManager {version}");
 		string hedFile = null, pkgFile = null, pkgFolder = null, kh2pcpatchFile = null, txtFile = null, zipFile = null;
+		List<string> patchFolders = new List<string>();
 		try{
 			for(int i=0;i<args.Length;i++){
 				if(Path.GetExtension(args[i]) == ".hed"){
@@ -66,6 +68,7 @@ class KHPCPatchManager{
 					pkgFile = args[i];
 				}else if(Directory.Exists(args[i])){
 					pkgFolder = args[i];
+					patchFolders.Add(args[i]);
 				}else if(Path.GetExtension(args[i]) == ".kh2pcpatch"){
 					kh2pcpatchFile = args[i];
 				}else if(Path.GetExtension(args[i]) == ".txt"){
@@ -88,7 +91,9 @@ class KHPCPatchManager{
 			}else if(pkgFile == null && pkgFolder != null){
 				Console.WriteLine("Creating patch...");
 				using(var zip = new ZipFile()){
-					zip.AddDirectory(pkgFolder, "");
+					for(int i=0;i<patchFolders.Count;i++){
+						zip.AddDirectory(patchFolders[i], "");
+					}
 					zip.Save("MyPatch.kh2pcpatch");
 				}
 				Console.WriteLine("Done!");
@@ -147,7 +152,7 @@ class KHPCPatchManager{
 			}else{
 				Console.WriteLine("- Drop a .hed file to unpack the associated .pkg file");
 				Console.WriteLine("- Drop a .pkg file and its unpacked folder to patch it");
-				Console.WriteLine("- Drop a folder (extracted .pkg format to create a kh2pcpatch");
+				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh2pcpatch");
 				Console.WriteLine("- Drop a kh2pcpatch to patch your .pkgs");
 			}
 		}catch(Exception e){
