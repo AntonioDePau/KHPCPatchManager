@@ -6,11 +6,11 @@ using Ionic.Zlib;
 using Ionic.Zip;
 using System.Collections.Generic;
 
-class KHPCPatchManager{
-	static Assembly ExecutingAssembly = Assembly.GetExecutingAssembly();
-	static string[] EmbeddedLibraries = ExecutingAssembly.GetManifestResourceNames().Where(x => x.EndsWith(".dll")).ToArray();
-	
+class KHPCPatchManager{	
 	static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args){
+		Assembly ExecutingAssembly = Assembly.GetExecutingAssembly();
+		string[] EmbeddedLibraries = ExecutingAssembly.GetManifestResourceNames().Where(x => x.EndsWith(".dll")).ToArray();
+
 		var assemblyName = new AssemblyName(args.Name).Name + ".dll";
 
 		var resourceName = EmbeddedLibraries.FirstOrDefault(x => x.EndsWith(assemblyName));
@@ -21,15 +21,6 @@ class KHPCPatchManager{
 			var bytes = new byte[stream.Length];
 			stream.Read(bytes, 0, bytes.Length);
 			return Assembly.Load(bytes);
-		}
-	}
-	
-	static string GetTxtResource(string s){
-		string resourceName = ExecutingAssembly.GetManifestResourceNames().Single(str => str.EndsWith(s));
-		using (Stream stream = ExecutingAssembly.GetManifestResourceStream(resourceName)){
-			using (var reader = new StreamReader(stream)){
-				return reader.ReadToEnd();
-			}
 		}
 	}
 	
@@ -49,6 +40,9 @@ class KHPCPatchManager{
 	static string version = "v0.0.5";
     static void Main(string[] args){
 		if(!Directory.Exists("resources")){
+			Assembly ExecutingAssembly = Assembly.GetExecutingAssembly();
+			string[] EmbeddedLibraries = ExecutingAssembly.GetManifestResourceNames().Where(x => x.EndsWith(".dll")).ToArray();
+
 			string resourceName = ExecutingAssembly.GetManifestResourceNames().Single(str => str.EndsWith("hashpairs.zip"));
 			using (Stream stream = ExecutingAssembly.GetManifestResourceStream(resourceName)){
 				ZipFile zip = ZipFile.Read(stream);
