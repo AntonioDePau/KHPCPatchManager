@@ -88,6 +88,7 @@ class KHPCPatchManager{
 				Console.WriteLine("Creating patch...");
 				using(var zip = new ZipFile()){
 					for(int i=0;i<patchFolders.Count;i++){
+						Console.WriteLine("Adding: {0}", patchFolders[i]);
 						zip.AddDirectory(patchFolders[i], "");
 					}
 					zip.Save("MyPatch.kh2pcpatch");
@@ -97,8 +98,8 @@ class KHPCPatchManager{
 				Console.WriteLine("Applying patch...");
 				string epicFolder = null;
 				while(!Directory.Exists(epicFolder)){
-					Console.WriteLine("Please drag your KH Epic Games install folder here:");
-					epicFolder = Console.ReadLine();
+					Console.WriteLine("Please drag your \"en\" folder (the one that contains kh2_first, kh2_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here:");
+					epicFolder = Console.ReadLine().Trim('"');
 				}
 				Console.WriteLine("Extracting patch...");
 				string timestamp = kh2pcpatchFile + "_" + DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss_ms");
