@@ -117,7 +117,7 @@ namespace OpenKh.Command.IdxImg
                         Console.WriteLine(outputFileName);
                         CreateDirectoryForFile(outputFileName);
 
-                        File.Create(outputFileName).Using(stream => stream.Write(img.SetPosition(entry.Offset).ReadBytes(entry.DataLength)));
+                        //File.Create(outputFileName).Using(stream => stream.Write(img.SetPosition(entry.Offset).ReadBytes(entry.DataLength)));
 
                         var hdAsset = new EgsHdAsset(img.SetPosition(entry.Offset));
                         File.Create(outputFileName).Using(stream => stream.Write(hdAsset.ReadData()));
@@ -131,7 +131,7 @@ namespace OpenKh.Command.IdxImg
                             Console.WriteLine(outputFileNameRemastered);
                             CreateDirectoryForFile(outputFileNameRemastered);
 
-                            var assetData = hdAsset.ReadRemasteredAsset(asset);
+                            var assetData = hdAsset.ReadRemasteredAsset(asset, outputFileName);
                             File.Create(outputFileNameRemastered).Using(stream => stream.Write(assetData));
                         }
                     }
@@ -210,7 +210,7 @@ namespace OpenKh.Command.IdxImg
                     using var hedStream = File.OpenRead(hedFile);
                     using var pkgStream = File.OpenRead(pkgFile);
 
-                    var hedEntries = Hed.Read(hedStream).ToList();
+                    //var hedEntries = Hed.Read(hedStream).ToList();
 
                     if (!Directory.Exists(outputDir))
                         Directory.CreateDirectory(outputDir);
@@ -228,7 +228,8 @@ namespace OpenKh.Command.IdxImg
 					
 					File.WriteAllText("log.txt", "");
 
-                    foreach (var entry in hedEntries)
+                    //foreach (var entry in hedEntries)
+                    foreach (var entry in Hed.Read(hedStream))
                     {
                         var hash = EpicGamesAssets.ToString(entry.MD5);
 
@@ -252,7 +253,7 @@ namespace OpenKh.Command.IdxImg
 							Console.WriteLine($"Keeping original: {filename}!");
 							File.AppendAllText("log.txt", $"Keeping original: {filename}!\n");
 							data = new byte[entry.DataLength];
-							pkgStream.Read(data, 0, entry.DataLength);
+							data = asset.ReadRawData();
 						}
 						var fileToInject = Path.Combine(inputFolder, filename);
 						var shouldCompressData = asset.OriginalAssetHeader.CompressedLength > 0;
@@ -353,7 +354,7 @@ namespace OpenKh.Command.IdxImg
 						}else{
 							Console.WriteLine($"Keeping remastered file: {relativePath}/{remasteredAssetFile}");
 							File.AppendAllText("log.txt", $"Keeping remastered file: {relativePath}/{remasteredAssetFile}!\n");
-							uncompressedData = asset.ReadRemasteredAsset(remasteredAssetFile);
+							uncompressedData = asset.ReadRemasteredAsset(remasteredAssetFile, originalFile);
 						}
 
 						var compressedData = CompressData(uncompressedData);

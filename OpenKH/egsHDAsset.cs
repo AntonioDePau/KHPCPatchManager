@@ -71,13 +71,15 @@ namespace OpenKh.Egs
             Assets = entries.Select(x => x.Name).ToArray();
         }
 
-        public byte[] ReadRemasteredAsset(string assetName)
+        public byte[] ReadRemasteredAsset(string assetName, string fileName)
         {
             var entry = _entries[assetName];
             var dataLength = entry.CompressedLength >= 0 ? entry.CompressedLength : entry.DecompressedLength;
             
             if (dataLength % 16 != 0)
                 dataLength += 16 - (dataLength % 16);
+			
+			//_stream.SetPosition(entry.Offset);
 
             var data = _stream.AlignPosition(0x10).ReadBytes(dataLength);
 
@@ -92,6 +94,11 @@ namespace OpenKh.Egs
                 using var deflate = new DeflateStream(compressedStream.SetPosition(2), CompressionMode.Decompress);
 
                 var decompressedData = new byte[entry.DecompressedLength];
+				//File.AppendAllText("log.txt", "Reading: " + fileName + "/" + assetName + "\n");
+				//File.AppendAllText("log.txt", "Bytes[2]: " + BitConverter.ToString(data.ToList().Take(2).ToArray()) + "\n");
+				//File.AppendAllText("log.txt", "Offset: " + entry.Offset + "\n");
+				//File.AppendAllText("log.txt", "Decompressed Length: " + decompressedData.Length + "\n");
+				//File.AppendAllText("log.txt", "Compressed Length: " + data.Length + "\n");
                 deflate.Read(decompressedData, 0, decompressedData.Length);
 
                 return decompressedData;
@@ -99,6 +106,14 @@ namespace OpenKh.Egs
             
             return data;
         }
+
+		public byte[] ReadRawData(){
+			if (_header.CompressedLength < 0)
+			_header.CompressedLength = _header.DecompressedLength;
+			var dataLength = _header.CompressedLength;
+			var data = _stream.SetPosition(_dataOffset).ReadBytes(dataLength);
+			return data;
+		}
 
         public byte[] ReadData()
         {
