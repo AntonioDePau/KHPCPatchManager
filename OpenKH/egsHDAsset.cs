@@ -47,6 +47,7 @@ namespace OpenKh.Egs
         private readonly Dictionary<string, RemasteredEntry> _entries;
 
         public string[] Assets { get; }
+		public byte[] Key { get; }
         public Header OriginalAssetHeader => _header;
         public Dictionary<string, RemasteredEntry> RemasteredAssetHeaders => _entries;
 
@@ -57,6 +58,7 @@ namespace OpenKh.Egs
 
             var seed = stream.ReadBytes(0x10);
             _key = EgsEncryption.GenerateKey(seed, PassCount);
+			Key = _key;
             
             _header = BinaryMapping.ReadObject<Header>(new MemoryStream(seed));
 

@@ -243,21 +243,26 @@ namespace OpenKh.Command.IdxImg
 
                         // Replace the found files
                         var asset = new EgsHdAsset(pkgStream.SetPosition(entry.Offset));
+						var shouldCompressData = false;
+						var shouldEncrypt = false;
 						byte[] data = new byte[]{};
                         if (filesToReplace.Contains(filename))
                         {
 							Console.WriteLine($"Replacing original: {filename}!");
 							File.AppendAllText("log.txt", $"Replacing original: {filename}!\n");
 							data = File.ReadAllBytes(filename);
+							shouldCompressData = asset.OriginalAssetHeader.CompressedLength > 0;
+							shouldEncrypt = true;
 						}else{
 							Console.WriteLine($"Keeping original: {filename}!");
 							File.AppendAllText("log.txt", $"Keeping original: {filename}!\n");
 							data = new byte[entry.DataLength];
-							data = asset.ReadRawData();
+							data = asset.ReadData();
+							shouldCompressData = asset.OriginalAssetHeader.CompressedLength > 0;
+							shouldEncrypt = true;
 						}
 						var fileToInject = Path.Combine(inputFolder, filename);
-						var shouldCompressData = asset.OriginalAssetHeader.CompressedLength > 0;
-						var newHedEntry = ReplaceFile(fileToInject, data, patchedHedStream, patchedPkgStream, asset, shouldCompressData, entry);
+						var newHedEntry = ReplaceFile(fileToInject, data, patchedHedStream, patchedPkgStream, asset, shouldCompressData, shouldEncrypt, entry);
 
                         pkgOffset += newHedEntry.DataLength;
                     }
@@ -265,7 +270,7 @@ namespace OpenKh.Command.IdxImg
                     // TODO: To replace the "pack" command, add all files that are not in the original HED file and inject them in the PKG stream too
                 }
 
-                private Hed.Entry ReplaceFile(string fileToInject, byte[] data, FileStream hedStream, FileStream pkgStream, EgsHdAsset asset, bool shouldCompressData = true, Hed.Entry originalHedHeader = null)
+                private Hed.Entry ReplaceFile(string fileToInject, byte[] data, FileStream hedStream, FileStream pkgStream, EgsHdAsset asset, bool shouldCompressData = true, bool shouldEncrypt = true, Hed.Entry originalHedHeader = null)
                 {
                     var filename = GetRelativePath(fileToInject, Path.Combine(InputFolder, ORIGINAL_FILES_FOLDER_NAME));
                     var offset = pkgStream.Position;
@@ -281,11 +286,14 @@ namespace OpenKh.Command.IdxImg
                     );
 
                     // The seed used for encryption is the data header6
-                    var seed = new MemoryStream();
-                    BinaryMapping.WriteObject<EgsHdAsset.Header>(seed, header);
-
-                    var encryptionKey = seed.ReadAllBytes();
-                    var encryptedFileData = header.CompressedLength >= 1 ? EgsEncryption.Encrypt(compressedData, encryptionKey) : compressedData;
+                    var encryptionKey = asset.Key;
+                    var encryptedFileData = compressedData;
+					if(shouldEncrypt){
+						var seed = new MemoryStream();
+						BinaryMapping.WriteObject<EgsHdAsset.Header>(seed, header);
+						encryptionKey = seed.ReadAllBytes();
+						encryptedFileData = header.CompressedLength >= 1 ? EgsEncryption.Encrypt(compressedData, encryptionKey) : compressedData;
+					}
 
                     BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
 
