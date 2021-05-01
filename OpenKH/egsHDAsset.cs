@@ -2,8 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-//using System.IO.Compression;
-using Ionic.Zlib;
+using System.IO.Compression;
+//using Ionic.Zlib;
 using System.Linq;
 using Xe.BinaryMapper;
 
