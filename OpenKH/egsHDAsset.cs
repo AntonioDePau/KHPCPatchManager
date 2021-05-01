@@ -44,7 +44,7 @@ namespace OpenKh.Egs
         private readonly byte[] _key;
         private readonly long _baseOffset;
         private readonly long _dataOffset;
-		private readonly Dictionary<string, RemasteredEntry> _entries;
+        private readonly Dictionary<string, RemasteredEntry> _entries;
 
         public string[] Assets { get; }
         public Header OriginalAssetHeader => _header;
