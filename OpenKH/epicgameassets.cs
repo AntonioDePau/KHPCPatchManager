@@ -236,7 +236,7 @@ namespace OpenKh.Command.IdxImg
                         if (!Names.TryGetValue(hash, out var filename))
                         {
 							Console.WriteLine($"No name for hash: {hash}!");
-							File.AppendAllText("log.txt", $"No name for hash: {hash}!");
+							File.AppendAllText("log.txt", $"No name for hash: {hash}!\n");
                             continue;
                         }
 
@@ -244,7 +244,7 @@ namespace OpenKh.Command.IdxImg
                         if (filesToReplace.Contains(filename))
                         {
 							Console.WriteLine($"Adding original: {filename}!");
-							File.AppendAllText("log.txt", $"Adding original: {filename}!");
+							File.AppendAllText("log.txt", $"Adding original: {filename}!\n");
                             var asset = new EgsHdAsset(pkgStream.SetPosition(entry.Offset));
                             var fileToInject = Path.Combine(inputFolder, filename);
                             var shouldCompressData = asset.OriginalAssetHeader.CompressedLength > 0;
@@ -262,7 +262,7 @@ namespace OpenKh.Command.IdxImg
                         else
                         {
 							Console.WriteLine($"Keeping original: {filename}!");
-							File.AppendAllText("log.txt", $"Keeping original: {filename}!");
+							File.AppendAllText("log.txt", $"Keeping original: {filename}!\n");
                             pkgStream.SetPosition(entry.Offset);
 
 
@@ -315,7 +315,7 @@ namespace OpenKh.Command.IdxImg
                     BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
 
                     Console.WriteLine($"Replaced original file: {filename}");
-					File.AppendAllText("log.txt", $"Replaced original file: {filename}!");
+					File.AppendAllText("log.txt", $"Replaced original file: {filename}!\n");
 
                     var remasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
 
@@ -395,7 +395,7 @@ namespace OpenKh.Command.IdxImg
                             BinaryMapping.WriteObject<EgsHdAsset.RemasteredEntry>(pkgStream, remasteredEntry);
 
                             Console.WriteLine($"Replaced remastered file: {relativePath}/{remasteredAssetFile}");
-							File.AppendAllText("log.txt", $"Replaced remastered file: {relativePath}/{remasteredAssetFile}!");
+							File.AppendAllText("log.txt", $"Replaced remastered file: {relativePath}/{remasteredAssetFile}!\n");
 
                             var encryptedData = EgsEncryption.Encrypt(compressedData, seed);
 
