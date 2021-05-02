@@ -40,8 +40,16 @@ public static class Extensions{
 		return stream;
 	}
 
-	public static T AlignPosition<T>(this T stream, int alignValue) where T : Stream =>
-		stream.SetPosition(Align((int)stream.Position, alignValue));
+	public static T AlignPosition<T>(this T stream, int alignValue) where T : Stream {
+		long newAlign = Align(stream.Position, alignValue);
+		if(newAlign<0){
+			Console.WriteLine("Align ERROR:");
+			Console.WriteLine($" currentPos: {stream.Position}");
+			Console.WriteLine($" alignValue: {alignValue}");
+			Console.WriteLine($" newPosition: {newAlign}");
+		}
+		return stream.SetPosition(newAlign);
+	}
 
 	public static List<T> ReadList<T>(this Stream stream, int offset, int count)
 		where T : class

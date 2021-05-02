@@ -45,16 +45,19 @@ class KHPCPatchManager{
 		FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(ExecutingAssembly.Location);
 		version = "v" + fvi.ProductVersion;
 		if(!Directory.Exists("resources")){
-			string resourceName = ExecutingAssembly.GetManifestResourceNames().Single(str => str.EndsWith("hashpairs.zip"));
+			/*string resourceName = ExecutingAssembly.GetManifestResourceNames().Single(str => str.EndsWith("hashpairs.zip"));
 			using (Stream stream = ExecutingAssembly.GetManifestResourceStream(resourceName)){
 				ZipFile zip = ZipFile.Read(stream);
 				Directory.CreateDirectory("resources");
 				zip.ExtractSelectedEntries("*.txt", "resources", "", ExtractExistingFileAction.OverwriteSilently);
-			}
+			}*/
+			Console.WriteLine("Please make sure you have a \"resources\" folder containing the hashpairs!");
+			Console.ReadLine();
+			return;
 		}
 		
 		Console.WriteLine($"KHPCPatchManager {version}");
-		string hedFile = null, pkgFile = null, pkgFolder = null, kh2pcpatchFile = null, txtFile = null, zipFile = null;
+		string hedFile = null, pkgFile = null, pkgFolder = null, kh2pcpatchFile = null;
 		List<string> patchFolders = new List<string>();
 		try{
 			for(int i=0;i<args.Length;i++){
@@ -67,10 +70,6 @@ class KHPCPatchManager{
 					patchFolders.Add(args[i]);
 				}else if(Path.GetExtension(args[i]) == ".kh2pcpatch"){
 					kh2pcpatchFile = args[i];
-				}else if(Path.GetExtension(args[i]) == ".txt"){
-					txtFile = args[i];
-				}else if(Path.GetExtension(args[i]) == ".zip"){
-					zipFile = args[i];
 				}
 			}
 			
@@ -128,24 +127,6 @@ class KHPCPatchManager{
 				}
 				Directory.Delete(timestamp, true);
 				Console.WriteLine("Done!");
-			}else if(txtFile != null){
-				byte[] data = File.ReadAllBytes(txtFile);
-				using (MemoryStream compressedStream = new MemoryStream()){
-					var deflateStream = new ZlibStream(compressedStream, Ionic.Zlib.CompressionMode.Compress, Ionic.Zlib.CompressionLevel.Default, true);
-
-					deflateStream.Write(data, 0, data.Length);
-					deflateStream.Close();
-
-					var compressedData = compressedStream.ReadAllBytes();
-					int padding = compressedData.Length % 0x10 == 0 ? 0 : (0x10 - compressedData.Length % 0x10);
-					Array.Resize(ref compressedData, compressedData.Length + padding);
-					
-					File.WriteAllBytes("test.zip", compressedData);
-				}
-			}else if(zipFile != null){
-				byte[] data = File.ReadAllBytes(zipFile);
-				var decompressedData = ZlibStream.UncompressBuffer(data);
-				File.WriteAllBytes("extracted.txt", decompressedData);
 			}else{
 				Console.WriteLine("- Drop a .hed file to unpack the associated .pkg file");
 				Console.WriteLine("- Drop a .pkg file and its unpacked folder to patch it");
