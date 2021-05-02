@@ -11,4 +11,4 @@ using System.Windows;
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(false)]
-[assembly: AssemblyFileVersion("0.0.19")]
+[assembly: AssemblyFileVersion("0.0.20")]

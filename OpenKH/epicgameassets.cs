@@ -250,7 +250,8 @@ namespace OpenKh.Command.IdxImg
                         {
 							Console.WriteLine($"Replacing original: {filename}!");
 							File.AppendAllText("log.txt", $"Replacing original: {filename}!\n");
-							data = File.ReadAllBytes(filename);
+							data = asset.ReadRawData();
+							data = File.ReadAllBytes(Path.Combine(inputFolder, filename));
 							shouldCompressData = asset.OriginalAssetHeader.CompressedLength > 0;
 							shouldEncrypt = true;
 						}else{
