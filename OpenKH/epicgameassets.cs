@@ -366,7 +366,7 @@ namespace OpenKh.Command.IdxImg
 					var allRemasteredAssetsData = new MemoryStream();
 					// 0x30 is the size of this header
 					var totalRemasteredAssetHeadersSize = (remasteredAssetFiles.Count() * 0x30);
-					var offsetPosition = originalUncompressedData.Length;
+					var offsetPosition = 0;
 
 					foreach (var remasteredAssetFile in remasteredAssetFiles)
 					{
@@ -384,7 +384,7 @@ namespace OpenKh.Command.IdxImg
 						}
 
 						var compressedData = asset.RemasteredAssetHeaders[remasteredAssetFile].CompressedLength < 0 ? uncompressedData : CompressData(uncompressedData);
-						var currentOffset = totalRemasteredAssetHeadersSize + 0x10 + offsetPosition;
+						var currentOffset = (int)pkgStream.Position + totalRemasteredAssetHeadersSize + offsetPosition + compressedData.Length;
 
 						var remasteredEntry = new EgsHdAsset.RemasteredEntry()
 						{
@@ -406,7 +406,7 @@ namespace OpenKh.Command.IdxImg
 						// all HD assets header juste after original file's data
 						allRemasteredAssetsData.Write(encryptedData);
 
-						offsetPosition += uncompressedData.Length;
+						offsetPosition += compressedData.Length;
 					}
 
 					pkgStream.Write(originalAssetData);
