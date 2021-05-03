@@ -103,6 +103,7 @@ namespace OpenKh.Command.IdxImg
                     using var hedStream = File.OpenRead(inputHed);
                     using var img = File.OpenRead(Path.ChangeExtension(inputHed, "pkg"));
 
+					File.WriteAllText("debug_log.txt", "");
                     foreach (var entry in Hed.Read(hedStream))
                     {
                         var hash = EpicGamesAssets.ToString(entry.MD5);
@@ -120,6 +121,20 @@ namespace OpenKh.Command.IdxImg
                         //File.Create(outputFileName).Using(stream => stream.Write(img.SetPosition(entry.Offset).ReadBytes(entry.DataLength)));
 
                         var hdAsset = new EgsHdAsset(img.SetPosition(entry.Offset));
+						string debug_log = hash + ": " + fileName + "\n";
+						debug_log += " PKG offset: " + entry.Offset + "\n";
+						debug_log += " Size: " + entry.DataLength + "\n";
+						debug_log += " RealSize: " + entry.ActualLength + "\n";
+						debug_log += " CompressedSize: " + hdAsset.OriginalAssetHeader.CompressedLength + "\n";
+						debug_log += " UncompressedSize: " + hdAsset.OriginalAssetHeader.DecompressedLength + "\n";
+						debug_log += " HD ASsets Count: " + hdAsset.OriginalAssetHeader.RemasteredAssetCount + "\n";
+						foreach(KeyValuePair<string,OpenKh.Egs.EgsHdAsset.RemasteredEntry> a in hdAsset.RemasteredAssetHeaders){
+							debug_log += "  Name: " + a.Key + "\n";
+							debug_log += "   PKG offset: " + a.Value.Offset + "\n";
+							debug_log += "   CompressedSize: " + a.Value.CompressedLength + "\n";
+							debug_log += "   UncompressedSize: " + a.Value.DecompressedLength + "\n";
+						}
+						File.AppendAllText("debug_log.txt", debug_log);
                         File.Create(outputFileName).Using(stream => stream.Write(hdAsset.ReadData()));
 
                         outputFileName = Path.Combine(outputDir, REMASTERED_FILES_FOLDER_NAME, fileName);
@@ -310,13 +325,15 @@ namespace OpenKh.Command.IdxImg
 
                         // If a remastered asset is not replaced, we still want to count its size for the HED entry
                         // TODO: We should also rewrite their offset + data => it won't work for the moment
-                        foreach (var remasteredAssetName in asset.RemasteredAssetHeaders.Keys)
-                        {
-                            if (!remasteredHeaders.Exists(header => header.Name == remasteredAssetName))
-                            {
-                                remasteredHeaders.Add(asset.RemasteredAssetHeaders[remasteredAssetName]);
-                            }
-                        }
+						
+						//TEST HERCULES
+                        //foreach (var remasteredAssetName in asset.RemasteredAssetHeaders.Keys)
+                        //{
+                        //    if (!remasteredHeaders.Exists(header => header.Name == remasteredAssetName))
+                        //    {
+                        //        remasteredHeaders.Add(asset.RemasteredAssetHeaders[remasteredAssetName]);
+                        //    }
+                        //}
                     }
                     else
                     {
@@ -366,8 +383,8 @@ namespace OpenKh.Command.IdxImg
 							uncompressedData = asset.ReadRemasteredAsset(remasteredAssetFile, originalFile);
 						}
 
-						var compressedData = CompressData(uncompressedData);
-						var currentOffset = (int)pkgStream.Position + totalRemasteredAssetHeadersSize + offsetPosition + compressedData.Length;
+						var compressedData = asset.RemasteredAssetHeaders[remasteredAssetFile].CompressedLength < 0 ? uncompressedData : CompressData(uncompressedData);
+						var currentOffset = totalRemasteredAssetHeadersSize + 0x10 + offsetPosition;
 
 						var remasteredEntry = new EgsHdAsset.RemasteredEntry()
 						{
@@ -389,7 +406,7 @@ namespace OpenKh.Command.IdxImg
 						// all HD assets header juste after original file's data
 						allRemasteredAssetsData.Write(encryptedData);
 
-						offsetPosition += encryptedData.Length;
+						offsetPosition += uncompressedData.Length;
 					}
 
 					pkgStream.Write(originalAssetData);
