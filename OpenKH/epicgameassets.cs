@@ -321,19 +321,19 @@ namespace OpenKh.Command.IdxImg
                     // Is there remastered assets?
                     if (header.RemasteredAssetCount > 0)
                     {
-                        remasteredHeaders = ReplaceRemasteredAssets(fileToInject, asset, pkgStream, encryptionKey, encryptedFileData);
+                        remasteredHeaders = ReplaceRemasteredAssets(fileToInject, asset, pkgStream, encryptionKey, encryptedFileData, data);
 
                         // If a remastered asset is not replaced, we still want to count its size for the HED entry
                         // TODO: We should also rewrite their offset + data => it won't work for the moment
 						
 						//TEST HERCULES
-                        //foreach (var remasteredAssetName in asset.RemasteredAssetHeaders.Keys)
-                        //{
-                        //    if (!remasteredHeaders.Exists(header => header.Name == remasteredAssetName))
-                        //    {
-                        //        remasteredHeaders.Add(asset.RemasteredAssetHeaders[remasteredAssetName]);
-                        //    }
-                        //}
+                        foreach (var remasteredAssetName in asset.RemasteredAssetHeaders.Keys)
+                        {
+                            if (!remasteredHeaders.Exists(header => header.Name == remasteredAssetName))
+                            {
+                                remasteredHeaders.Add(asset.RemasteredAssetHeaders[remasteredAssetName]);
+                            }
+                        }
                     }
                     else
                     {
@@ -355,7 +355,7 @@ namespace OpenKh.Command.IdxImg
                     return hedEntry;
                 }
 
-                private List<EgsHdAsset.RemasteredEntry> ReplaceRemasteredAssets(string originalFile, EgsHdAsset asset, FileStream pkgStream, byte[] seed, byte[] originalAssetData)
+                private List<EgsHdAsset.RemasteredEntry> ReplaceRemasteredAssets(string originalFile, EgsHdAsset asset, FileStream pkgStream, byte[] seed, byte[] originalAssetData, byte[] originalUncompressedData)
                 {
                     var newRemasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
                     var relativePath = GetRelativePath(originalFile, Path.Combine(InputFolder, ORIGINAL_FILES_FOLDER_NAME));
@@ -366,7 +366,7 @@ namespace OpenKh.Command.IdxImg
 					var allRemasteredAssetsData = new MemoryStream();
 					// 0x30 is the size of this header
 					var totalRemasteredAssetHeadersSize = (remasteredAssetFiles.Count() * 0x30);
-					var offsetPosition = 0;
+					var offsetPosition = originalUncompressedData.Length;
 
 					foreach (var remasteredAssetFile in remasteredAssetFiles)
 					{
