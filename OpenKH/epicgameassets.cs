@@ -273,9 +273,9 @@ namespace OpenKh.Command.IdxImg
 							Console.WriteLine($"Keeping original: {filename}!");
 							File.AppendAllText("log.txt", $"Keeping original: {filename}!\n");
 							data = new byte[entry.DataLength];
-							data = asset.ReadData();
-							shouldCompressData = asset.OriginalAssetHeader.CompressedLength > 0;
-							shouldEncrypt = true;
+							data = asset.ReadRawData();
+							shouldCompressData = false;
+							shouldEncrypt = false;
 						}
 						var fileToInject = Path.Combine(inputFolder, filename);
 						var newHedEntry = ReplaceFile(fileToInject, data, patchedHedStream, patchedPkgStream, asset, shouldCompressData, shouldEncrypt, entry);
@@ -292,10 +292,10 @@ namespace OpenKh.Command.IdxImg
                     var offset = pkgStream.Position;
                     var compressedData = shouldCompressData ? CompressData(data) : data;
                     var comrpessedDataLenght = compressedData.Length == data.Length ? asset.OriginalAssetHeader.CompressedLength : compressedData.Length;
-
+					
                     // Encrypt and write current file data in the PKG stream
                     var header = CreateAssetHeader(
-                        data,
+                        (shouldCompressData ? data : new byte[asset.OriginalAssetHeader.DecompressedLength]),
                         comrpessedDataLenght,
                         asset.OriginalAssetHeader.RemasteredAssetCount,
                         asset.OriginalAssetHeader.Unknown0c
@@ -321,7 +321,7 @@ namespace OpenKh.Command.IdxImg
                     // Is there remastered assets?
                     if (header.RemasteredAssetCount > 0)
                     {
-                        remasteredHeaders = ReplaceRemasteredAssets(fileToInject, asset, pkgStream, encryptionKey, encryptedFileData, data);
+                        remasteredHeaders = ReplaceRemasteredAssets(fileToInject, asset, pkgStream, encryptionKey, encryptedFileData, (shouldCompressData ? data : new byte[asset.OriginalAssetHeader.DecompressedLength]));
 
                         // If a remastered asset is not replaced, we still want to count its size for the HED entry
                         // TODO: We should also rewrite their offset + data => it won't work for the moment
@@ -342,15 +342,9 @@ namespace OpenKh.Command.IdxImg
                     }
 
                     // Write a new entry in the HED stream
-                    var hedEntry = CreateHedEntry(filename, data, compressedData, offset, remasteredHeaders);
+                    var hedEntry = CreateHedEntry(filename, (shouldCompressData ? data : new byte[asset.OriginalAssetHeader.DecompressedLength]), (int)(pkgStream.Position - offset), offset, remasteredHeaders);
 
                     BinaryMapping.WriteObject<Hed.Entry>(hedStream, hedEntry);
-
-                    //Console.WriteLine("Data header");
-                    //Console.WriteLine($"CompressedLength: {asset.OriginalAssetHeader.CompressedLength} | {header.CompressedLength}");
-                    //Console.WriteLine($"DecompressedLength: {asset.OriginalAssetHeader.DecompressedLength} | {header.DecompressedLength}");
-                    //Console.WriteLine($"RemasteredAssetCount: {asset.OriginalAssetHeader.RemasteredAssetCount} | {header.RemasteredAssetCount}");
-                    //Console.WriteLine($"Unknown0c: {asset.OriginalAssetHeader.Unknown0c} | {header.Unknown0c}");
 
                     return hedEntry;
                 }
@@ -366,29 +360,38 @@ namespace OpenKh.Command.IdxImg
 					var allRemasteredAssetsData = new MemoryStream();
 					// 0x30 is the size of this header
 					var totalRemasteredAssetHeadersSize = (remasteredAssetFiles.Count() * 0x30);
-					var offsetPosition = 0;
+					var offsetPosition = originalUncompressedData.Length;
 
 					foreach (var remasteredAssetFile in remasteredAssetFiles)
 					{
 						var assetFilePath = Path.Combine(remasteredAssetsFolder, remasteredAssetFile);
 
 						var uncompressedData = new byte[]{};
+						var compressedData = new byte[]{};
+						var encryptedData = new byte[]{};
 						if (File.Exists(assetFilePath)){
 							Console.WriteLine($"Replacing remastered file: {relativePath}/{remasteredAssetFile}");
 							File.AppendAllText("log.txt", $"Replacing remastered file: {relativePath}/{remasteredAssetFile}!\n");
 							uncompressedData = File.ReadAllBytes(assetFilePath);
+							encryptedData = asset.ReadRawRemasteredAsset(remasteredAssetFile, originalFile);
+							compressedData = CompressData(uncompressedData);
+							encryptedData = asset.RemasteredAssetHeaders[remasteredAssetFile].CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, seed) : compressedData;
 						}else{
 							Console.WriteLine($"Keeping remastered file: {relativePath}/{remasteredAssetFile}");
 							File.AppendAllText("log.txt", $"Keeping remastered file: {relativePath}/{remasteredAssetFile}!\n");
-							uncompressedData = asset.ReadRemasteredAsset(remasteredAssetFile, originalFile);
+							encryptedData = asset.ReadRawRemasteredAsset(remasteredAssetFile, originalFile);
+							uncompressedData = new byte[asset.RemasteredAssetHeaders[remasteredAssetFile].DecompressedLength];
 						}
 
-						var compressedData = asset.RemasteredAssetHeaders[remasteredAssetFile].CompressedLength < 0 ? uncompressedData : CompressData(uncompressedData);
-						var currentOffset = (int)pkgStream.Position + totalRemasteredAssetHeadersSize + offsetPosition + compressedData.Length;
+						var currentOffset = totalRemasteredAssetHeadersSize + offsetPosition + 0x10;
+						
+						var entryCompressedLength = encryptedData.Length;
+						if(entryCompressedLength == uncompressedData.Length) entryCompressedLength = (int)-1;
+						if(asset.RemasteredAssetHeaders[remasteredAssetFile].CompressedLength == -2) entryCompressedLength = (int)-2;
 
 						var remasteredEntry = new EgsHdAsset.RemasteredEntry()
 						{
-							CompressedLength = compressedData.Length,
+							CompressedLength = entryCompressedLength,
 							DecompressedLength = (int)uncompressedData.Length,
 							Name = remasteredAssetFile,
 							Offset = currentOffset,
@@ -400,13 +403,14 @@ namespace OpenKh.Command.IdxImg
 						// Write asset header in the PKG stream
 						BinaryMapping.WriteObject<EgsHdAsset.RemasteredEntry>(pkgStream, remasteredEntry);
 
-						var encryptedData = EgsEncryption.Encrypt(compressedData, seed);
-
 						// Don't write into the PKG stream yet as we need to write
 						// all HD assets header juste after original file's data
 						allRemasteredAssetsData.Write(encryptedData);
+						if(encryptedData.Length % 0x10 != 0){
+							allRemasteredAssetsData.Write(Enumerable.Repeat((byte)0xCD, 16 - (encryptedData.Length % 0x10)).ToArray());
+						}
 
-						offsetPosition += compressedData.Length;
+						offsetPosition += uncompressedData.Length;
 					}
 
 					pkgStream.Write(originalAssetData);
@@ -502,24 +506,18 @@ namespace OpenKh.Command.IdxImg
                 }
             }
 
-            public static Hed.Entry CreateHedEntry(string filename, byte[] data, byte[] dataB, long offset, List<EgsHdAsset.RemasteredEntry> remasteredHeaders)
+            public static Hed.Entry CreateHedEntry(string filename, byte[] data, int dataLength, long offset, List<EgsHdAsset.RemasteredEntry> remasteredHeaders)
             {
                 var fileHash = CreateMD5(filename);
                 // 0x10 => size of the original asset header
                 // 0x30 => size of the remastered asset header
-                var dataLength = data.Length + 0x10;
-
-                foreach (var header in remasteredHeaders)
-                {
-                    dataLength += header.CompressedLength + 0x30;
-                }
 
                 return new Hed.Entry()
                 {
                     MD5 = ToBytes(fileHash),
-                    ActualLength = (int)data.Length,
+                    Offset = offset,
                     DataLength = dataLength,
-                    Offset = offset
+                    ActualLength = (int)data.Length
                 };
             }
 
