@@ -22,7 +22,6 @@ namespace OpenKh.Command.IdxImg
         {
             private const string ORIGINAL_FILES_FOLDER_NAME = "original";
             private const string REMASTERED_FILES_FOLDER_NAME = "remastered";
-			private const bool Logging = true;
 
             #region MD5 names
 
@@ -190,8 +189,6 @@ namespace OpenKh.Command.IdxImg
 
                     pkgStream.SetPosition(0);
 					
-					if(Logging) try{File.WriteAllText("log.txt", "");}catch(Exception e){Console.WriteLine(e);};
-					
                     foreach (var entry in Hed.Read(hedStream))
                     {
                         var hash = EpicGamesAssets.ToString(entry.MD5);
@@ -203,7 +200,6 @@ namespace OpenKh.Command.IdxImg
                             continue;
                         }
 
-						if(Logging) try{File.AppendAllText("log.txt", hash + ": " + filename + "\n");}catch(Exception e){Console.WriteLine(e);};
                         // Replace the found files
                         var asset = new EgsHdAsset(pkgStream.SetPosition(entry.Offset));
 						var fileToInject = Path.Combine(inputFolder, filename);
@@ -228,20 +224,17 @@ namespace OpenKh.Command.IdxImg
                         asset.OriginalAssetHeader.RemasteredAssetCount,
                         asset.OriginalAssetHeader.Unknown0c
                     );
-					if(Logging) try{File.AppendAllText("log.txt", " Replaced:\n  DecompressedLength: " + header.DecompressedLength + "\n  HD assets count: " + header.RemasteredAssetCount + "\n");}catch(Exception e){Console.WriteLine(e);};
-					if(Logging) try{File.AppendAllText("log.txt", "  CompressedLength: " + header.CompressedLength + "\n  Unknown0c: " + header.Unknown0c + "\n");}catch(Exception e){Console.WriteLine(e);};
-
                     var encryptionKey = asset.Key;
 					if (filesToReplace.Contains(originalfilename))
 					{
 						Console.WriteLine($"Replacing original: {originalfilename}!");
 						Console.WriteLine(header.CompressedLength);
 						// Read Raw data to set the correct offset even if we're reading from an external file
-						asset.ReadRawData();
+						data = asset.ReadRawData();
+						header.DecompressedLength = data.Length;
 						data = File.ReadAllBytes(filename);
 						header.DecompressedLength = data.Length;
 						compressedData = header.CompressedLength > -1 ? CompressData(data) : data;
-						if(originalfilename.Contains("us/title.2ld") || originalfilename.Contains("us\\title.2ld")) File.WriteAllBytes("title.2ld.dat", compressedData);
 						if(header.CompressedLength > -1) header.CompressedLength = compressedData.Length;
 						Console.WriteLine(header.CompressedLength);
 						if(header.CompressedLength > -2){
@@ -254,21 +247,12 @@ namespace OpenKh.Command.IdxImg
 							// Encrypt file
 							encryptedData = header.CompressedLength > 2 ? EgsEncryption.Encrypt(compressedData, encryptionKey) : compressedData;
 						}
-						if(Logging) try{File.AppendAllText("log.txt", " Replaced:\n  DecompressedLength: " + header.DecompressedLength + "\n  HD assets count: " + header.RemasteredAssetCount + "\n");}catch(Exception e){Console.WriteLine(e);};
-						if(Logging) try{File.AppendAllText("log.txt", "  CompressedLength: " + header.CompressedLength + "\n  Unknown0c: " + header.Unknown0c + "\n");}catch(Exception e){Console.WriteLine(e);};
-
 					}else{
 						Console.WriteLine($"Keeping original: {originalfilename}!");
 						//data = asset.ReadRawData();
 						compressedData = asset.ReadRawData();
-						if(originalfilename.Contains("us/title.2ld") || originalfilename.Contains("us\\title.2ld")){
-							var decrypted = compressedData;
-							asset.DecryptData(decrypted);
-							File.WriteAllBytes("title.2ld.dat", decrypted);
-						}
 						encryptedData = compressedData;
-						
-					}
+					}				
 					var offset = pkgStream.Position;
                     BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
 
@@ -297,7 +281,6 @@ namespace OpenKh.Command.IdxImg
 
                     // Write a new entry in the HED stream
                     var hedEntry = CreateHedEntry(originalfilename, data, (int)(pkgStream.Position - offset), offset, remasteredHeaders);
-					if(Logging) try{File.AppendAllText("log.txt", " Hed info:\n  Offset: " + hedEntry.Offset + "\n  DataLength: " + hedEntry.DataLength + "\n  ActualLength: " + hedEntry.ActualLength + "\n\n");}catch(Exception e){Console.WriteLine(e);};
 
                     BinaryMapping.WriteObject<Hed.Entry>(hedStream, hedEntry);
 
@@ -320,10 +303,6 @@ namespace OpenKh.Command.IdxImg
 
 					foreach (var remasteredAssetFile in remasteredAssetFiles)
 					{
-						var hda = asset.RemasteredAssetHeaders[remasteredAssetFile];
-						if(Logging) try{File.AppendAllText("log.txt", "  HD Assets:\n   Name: " + hda.Name + "\n    Offset: " + hda.Offset + "\n    Unknown24: " + hda.Unknown24 + "\n");}catch(Exception e){Console.WriteLine(e);};
-						if(Logging) try{File.AppendAllText("log.txt", "    DecompressedLength: " + hda.DecompressedLength +"\n    CompressedLength: " + hda.CompressedLength + "\n");}catch(Exception e){Console.WriteLine(e);};
-
 						var assetFilePath = Path.Combine(remasteredAssetsFolder, remasteredAssetFile);
 
 						var uncompressedData = new byte[]{};
@@ -358,8 +337,6 @@ namespace OpenKh.Command.IdxImg
 							Offset = currentOffset,
 							Unknown24 = asset.RemasteredAssetHeaders[remasteredAssetFile].Unknown24
 						};
-						if(Logging) try{File.AppendAllText("log.txt", "  HD Assets injected:\n   Name: " + remasteredEntry.Name + "\n    Offset: " + remasteredEntry.Offset + "\n    Unknown24: " + remasteredEntry.Unknown24 + "\n");}catch(Exception e){Console.WriteLine(e);};
-						if(Logging) try{File.AppendAllText("log.txt", "    DecompressedLength: " + remasteredEntry.DecompressedLength +"\n    CompressedLength: " + remasteredEntry.CompressedLength + "\n");}catch(Exception e){Console.WriteLine(e);};
 
 						newRemasteredHeaders.Add(remasteredEntry);
 
@@ -463,8 +440,7 @@ namespace OpenKh.Command.IdxImg
 
                     // Make sure compressed data is aligned with 0x10
                     int padding = compressedData.Length % 0x10 == 0 ? 0 : (0x10 - compressedData.Length % 0x10);
-                    //Array.Resize(ref compressedData, compressedData.Length + padding);
-					compressedData = compressedData.ToList().Concat(Enumerable.Repeat((byte)0xCD, padding)).ToArray();
+                    Array.Resize(ref compressedData, compressedData.Length + padding);
 
                     return compressedData;
                 }

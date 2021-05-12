@@ -151,10 +151,5 @@ namespace OpenKh.Egs
 			
 			return data;
 		}
-		
-		public void DecryptData(byte[] data){
-			for (var i = 0; i < Math.Min(data.Length, 0x100); i += 0x10)
-				EgsEncryption.DecryptChunk(_key, data, i, PassCount);
-		}
     }
 }
