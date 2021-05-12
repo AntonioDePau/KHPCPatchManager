@@ -73,7 +73,7 @@ namespace OpenKh.Egs
             Assets = entries.Select(x => x.Name).ToArray();
         }
 		
-		public byte[] ReadRawRemasteredAsset(string assetName, string fileName)
+		public byte[] ReadRawRemasteredAsset(string assetName)
 		{
 			var entry = _entries[assetName];
 			var data = new byte[entry.CompressedLength >= 0 ? entry.CompressedLength : entry.DecompressedLength];
@@ -83,10 +83,10 @@ namespace OpenKh.Egs
 			return data;
 		}
 
-        public byte[] ReadRemasteredAsset(string assetName, string fileName)
+        public byte[] ReadRemasteredAsset(string assetName)
 		{
 			var entry = _entries[assetName];
-			byte[] data = ReadRawRemasteredAsset(assetName, fileName);
+			byte[] data = ReadRawRemasteredAsset(assetName);
             return DecompressRemasteredData(data, entry);
         }
 		

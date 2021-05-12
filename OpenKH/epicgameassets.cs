@@ -129,7 +129,7 @@ namespace OpenKh.Command.IdxImg
                             Console.WriteLine(outputFileNameRemastered);
                             CreateDirectoryForFile(outputFileNameRemastered);
 
-                            var assetData = hdAsset.ReadRemasteredAsset(asset, outputFileName);
+                            var assetData = hdAsset.ReadRemasteredAsset(asset);
                             File.Create(outputFileNameRemastered).Using(stream => stream.Write(assetData));
                         }
                     }
@@ -315,11 +315,11 @@ namespace OpenKh.Command.IdxImg
 							Console.WriteLine(asset.RemasteredAssetHeaders[remasteredAssetFile].CompressedLength);
 							
 							//Read the remastered file regardless, to set the correct offset
-							encryptedData = asset.ReadRawRemasteredAsset(remasteredAssetFile, originalFile);
+							encryptedData = asset.ReadRawRemasteredAsset(remasteredAssetFile);
 							encryptedData = asset.RemasteredAssetHeaders[remasteredAssetFile].CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, seed) : compressedData;
 						}else{
 							Console.WriteLine($"Keeping remastered file: {relativePath}/{remasteredAssetFile}");
-							encryptedData = asset.ReadRawRemasteredAsset(remasteredAssetFile, originalFile);
+							encryptedData = asset.ReadRawRemasteredAsset(remasteredAssetFile);
 							uncompressedData = new byte[asset.RemasteredAssetHeaders[remasteredAssetFile].DecompressedLength];
 						}
 
