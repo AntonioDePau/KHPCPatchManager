@@ -89,28 +89,20 @@ class KHPCPatchManager{
 				}else if(Path.GetExtension(args[i]) == ".kh1pcpatch"){
 					patchType = "KH1";
 					kh1pcpatchFile = args[i];
+					originFolder = kh1pcpatchFile;
+					khFiles = kh1files;
 				}else if(Path.GetExtension(args[i]) == ".kh2pcpatch"){
 					patchType = "KH2";
 					kh2pcpatchFile = args[i];
+					originFolder = kh2pcpatchFile;
+					khFiles = kh2files;
 				}else if(Path.GetExtension(args[i]) == ".bbspcpatch"){
 					patchType = "BBS";
 					bbspcpatchFile = args[i];
+					originFolder = bbspcpatchFile;
+					khFiles = bbsfiles;
 				}
 			}
-			switch (patchType){
-					case "KH1":
-						originFolder = kh1pcpatchFile;
-						khFiles = kh1files;
-					break;
-					case "KH2":
-						originFolder = kh2pcpatchFile;
-						khFiles = kh2files;
-					break;
-					case "BBS":
-						originFolder = bbspcpatchFile;
-						khFiles = bbsfiles;
-					break;
-				}
 			if(hedFile != null){
 				Console.WriteLine("Extracting pkg...");
 				var egs = new OpenKh.Command.IdxImg.Program.EpicGamesAssets.ExtractCommand();
@@ -137,11 +129,7 @@ class KHPCPatchManager{
 					}
 				}
 				Console.WriteLine("Done!");
-			
-			}
-			
-			
-			else if(originFolder != null){
+			}else if(originFolder != null){
 				Console.WriteLine("Applying " + patchType + "patch...");
 				string epicFolder = null;
 				while(!Directory.Exists(epicFolder)){
