@@ -167,8 +167,8 @@ class KHPCPatchManager{
 			}else{
 				Console.WriteLine("- Drop a .hed file to unpack the associated .pkg file");
 				Console.WriteLine("- Drop a .pkg file and its unpacked folder to patch it");
-				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch or a bbspatch");
-				Console.WriteLine("- Drop a kh1pcpatch, kh2pcpatch or a bbspatch to patch your .pkgs");
+				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch or a bbspcpatch");
+				Console.WriteLine("- Drop a kh1pcpatch, kh2pcpatch or a bbspcpatch to patch your .pkgs");
 			}
 		}catch(Exception e){
 			Console.WriteLine($"Error: {e}");
