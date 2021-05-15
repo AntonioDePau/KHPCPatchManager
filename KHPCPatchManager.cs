@@ -47,6 +47,16 @@ class KHPCPatchManager{
 		"kh2_fifth",
 		"kh2_sixth",
 	};
+
+		static string[] bbsfiles = new string[]{
+		"bbs_first",
+		"bbs_second",
+		"bbs_third",
+		"bbs_fourth",
+	};
+
+	static string patchType;
+	static string[] khFiles;
 	
 	static string version = "";
     static void Main(string[] args){
@@ -65,7 +75,7 @@ class KHPCPatchManager{
 		}
 		
 		Console.WriteLine($"KHPCPatchManager {version}");
-		string hedFile = null, pkgFile = null, pkgFolder = null, kh1pcpatchFile = null, kh2pcpatchFile = null;
+		string hedFile = null, pkgFile = null, pkgFolder = null, kh1pcpatchFile = null, kh2pcpatchFile = null, bbspcpatchFile = null, originFolder = null;
 		List<string> patchFolders = new List<string>();
 		try{
 			for(int i=0;i<args.Length;i++){
@@ -77,12 +87,30 @@ class KHPCPatchManager{
 					pkgFolder = args[i];
 					patchFolders.Add(args[i]);
 				}else if(Path.GetExtension(args[i]) == ".kh1pcpatch"){
+					patchType = "KH1";
 					kh1pcpatchFile = args[i];
 				}else if(Path.GetExtension(args[i]) == ".kh2pcpatch"){
+					patchType = "KH2";
 					kh2pcpatchFile = args[i];
+				}else if(Path.GetExtension(args[i]) == ".bbspcpatch"){
+					patchType = "BBS";
+					bbspcpatchFile = args[i];
 				}
 			}
-			
+			switch (patchType){
+					case "KH1":
+						originFolder = kh1pcpatchFile;
+						khFiles = kh1files;
+					break;
+					case "KH2":
+						originFolder = kh2pcpatchFile;
+						khFiles = kh2files;
+					break;
+					case "BBS":
+						originFolder = bbspcpatchFile;
+						khFiles = bbsfiles;
+					break;
+				}
 			if(hedFile != null){
 				Console.WriteLine("Extracting pkg...");
 				var egs = new OpenKh.Command.IdxImg.Program.EpicGamesAssets.ExtractCommand();
@@ -103,31 +131,36 @@ class KHPCPatchManager{
 							zip.Save("MyPatch.kh1pcpatch");
 						}else if (Directory.Exists(patchFolders[i] + @"\kh2_first") || Directory.Exists(patchFolders[i] + @"\kh2_second") || Directory.Exists(patchFolders[i] + @"\kh2_third") || Directory.Exists(patchFolders[i] + @"\kh2_fourth") || Directory.Exists(patchFolders[i] + @"\kh2_fifth") || Directory.Exists(patchFolders[i] + @"\kh2_sixth")){
 							zip.Save("MyPatch.kh2pcpatch");
+						}else if (Directory.Exists(patchFolders[i] + @"\bbs_first") || Directory.Exists(patchFolders[i] + @"\bbs_second") || Directory.Exists(patchFolders[i] + @"\bbs_third") || Directory.Exists(patchFolders[i] + @"\bbs_fourth")){
+							zip.Save("MyPatch.bbspcpatch");
 						}
 					}
 				}
 				Console.WriteLine("Done!");
 			
-			}else if(kh1pcpatchFile != null){
-				Console.WriteLine("Applying KH1 patch...");
+			}
+			
+			
+			else if(originFolder != null){
+				Console.WriteLine("Applying " + patchType + "patch...");
 				string epicFolder = null;
 				while(!Directory.Exists(epicFolder)){
 					Console.WriteLine("Please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here:");
 					epicFolder = Console.ReadLine().Trim('"');
 				}
 				Console.WriteLine("Extracting patch...");
-				string timestamp = kh1pcpatchFile + "_" + DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss_ms");
-				ZipFile zip = ZipFile.Read(kh1pcpatchFile);
+				string timestamp = originFolder + "_" + DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss_ms");
+				ZipFile zip = ZipFile.Read(originFolder);
 				Directory.CreateDirectory(timestamp);
 				string epicBackup = Path.Combine(epicFolder, "backup");
 				Directory.CreateDirectory(epicBackup);
 				zip.ExtractAll(timestamp, ExtractExistingFileAction.OverwriteSilently);
-				for(int i=0;i<kh1files.Length;i++){
-					string epicFile = Path.Combine(epicFolder, kh1files[i] + ".pkg");
-					string epicHedFile = Path.Combine(epicFolder, kh1files[i] + ".hed");
-					string patchFolder = Path.Combine(timestamp, kh1files[i]);
-					string epicPkgBackupFile = Path.Combine(epicBackup, kh1files[i] + ".pkg");
-					string epicHedBackupFile = Path.Combine(epicBackup, kh1files[i] + ".hed");
+				for(int i=0;i<khFiles.Length;i++){
+					string epicFile = Path.Combine(epicFolder, khFiles[i] + ".pkg");
+					string epicHedFile = Path.Combine(epicFolder, khFiles[i] + ".hed");
+					string patchFolder = Path.Combine(timestamp, khFiles[i]);
+					string epicPkgBackupFile = Path.Combine(epicBackup, khFiles[i] + ".pkg");
+					string epicHedBackupFile = Path.Combine(epicBackup, khFiles[i] + ".hed");
 					if(Directory.Exists(patchFolder) && File.Exists(epicFile)){
 						if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
 						File.Move(epicFile, epicPkgBackupFile);
@@ -137,50 +170,17 @@ class KHPCPatchManager{
 						var egs = new OpenKh.Command.IdxImg.Program.EpicGamesAssets.PatchCommand();
 						egs.Execute(epicPkgBackupFile, patchFolder, epicFolder);
 					}else{
-						Console.WriteLine($"Could not find {kh1files[i]} n/or any patch for it.");
+						Console.WriteLine($"Could not find {khFiles[i]} n/or any patch for it.");
 					}
 				}
 				Directory.Delete(timestamp, true);
 				Console.WriteLine("Done!");
-			}else if(kh2pcpatchFile != null){
-				Console.WriteLine("Applying KH2 patch...");
-				string epicFolder = null;
-				while(!Directory.Exists(epicFolder)){
-					Console.WriteLine("Please drag your \"en\" folder (the one that contains kh2_first, kh2_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here:");
-					epicFolder = Console.ReadLine().Trim('"');
-				}
-				Console.WriteLine("Extracting patch...");
-				string timestamp = kh2pcpatchFile + "_" + DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss_ms");
-				ZipFile zip = ZipFile.Read(kh2pcpatchFile);
-				Directory.CreateDirectory(timestamp);
-				string epicBackup = Path.Combine(epicFolder, "backup");
-				Directory.CreateDirectory(epicBackup);
-				zip.ExtractAll(timestamp, ExtractExistingFileAction.OverwriteSilently);
-				for(int i=0;i<kh2files.Length;i++){
-					string epicFile = Path.Combine(epicFolder, kh2files[i] + ".pkg");
-					string epicHedFile = Path.Combine(epicFolder, kh2files[i] + ".hed");
-					string patchFolder = Path.Combine(timestamp, kh2files[i]);
-					string epicPkgBackupFile = Path.Combine(epicBackup, kh2files[i] + ".pkg");
-					string epicHedBackupFile = Path.Combine(epicBackup, kh2files[i] + ".hed");
-					if(Directory.Exists(patchFolder) && File.Exists(epicFile)){
-						if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
-						File.Move(epicFile, epicPkgBackupFile);
-						if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
-						File.Move(epicHedFile, epicHedBackupFile);
-						Console.WriteLine($"Patching {epicFile}...");
-						var egs = new OpenKh.Command.IdxImg.Program.EpicGamesAssets.PatchCommand();
-						egs.Execute(epicPkgBackupFile, patchFolder, epicFolder);
-					}else{
-						Console.WriteLine($"Could not find {kh2files[i]} n/or any patch for it.");
-					}
-				}
-				Directory.Delete(timestamp, true);
-				Console.WriteLine("Done!");
+
 			}else{
 				Console.WriteLine("- Drop a .hed file to unpack the associated .pkg file");
 				Console.WriteLine("- Drop a .pkg file and its unpacked folder to patch it");
-				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh2pcpatch or a kh2pcpatch");
-				Console.WriteLine("- Drop a kh1pcpatch or a kh2pcpatch to patch your .pkgs");
+				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch or a bbspatch");
+				Console.WriteLine("- Drop a kh1pcpatch, kh2pcpatch or a bbspatch to patch your .pkgs");
 			}
 		}catch(Exception e){
 			Console.WriteLine($"Error: {e}");
