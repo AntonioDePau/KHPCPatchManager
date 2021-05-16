@@ -48,11 +48,18 @@ class KHPCPatchManager{
 		"kh2_sixth",
 	};
 
-		static string[] bbsfiles = new string[]{
+	static string[] bbsfiles = new string[]{
 		"bbs_first",
 		"bbs_second",
 		"bbs_third",
 		"bbs_fourth",
+	};
+
+	static string[] dddfiles = new string[]{
+		"kh3d_first",
+		"kh3d_second",
+		"kh3d_third",
+		"kh3d_fourth",
 	};
 
 	static string patchType;
@@ -75,7 +82,7 @@ class KHPCPatchManager{
 		}
 		
 		Console.WriteLine($"KHPCPatchManager {version}");
-		string hedFile = null, pkgFile = null, pkgFolder = null, kh1pcpatchFile = null, kh2pcpatchFile = null, bbspcpatchFile = null, originFolder = null;
+		string hedFile = null, pkgFile = null, pkgFolder = null, kh1pcpatchFile = null, kh2pcpatchFile = null, bbspcpatchFile = null, dddpcpatchFile = null, originFolder = null;
 		List<string> patchFolders = new List<string>();
 		try{
 			for(int i=0;i<args.Length;i++){
@@ -101,6 +108,11 @@ class KHPCPatchManager{
 					bbspcpatchFile = args[i];
 					originFolder = bbspcpatchFile;
 					khFiles = bbsfiles;
+				}else if(Path.GetExtension(args[i]) == ".dddpcpatch"){
+					patchType = "DDD";
+					dddpcpatchFile = args[i];
+					originFolder = dddpcpatchFile;
+					khFiles = dddfiles;
 				}
 			}
 			if(hedFile != null){
@@ -125,6 +137,8 @@ class KHPCPatchManager{
 							zip.Save("MyPatch.kh2pcpatch");
 						}else if (Directory.Exists(patchFolders[i] + @"\bbs_first") || Directory.Exists(patchFolders[i] + @"\bbs_second") || Directory.Exists(patchFolders[i] + @"\bbs_third") || Directory.Exists(patchFolders[i] + @"\bbs_fourth")){
 							zip.Save("MyPatch.bbspcpatch");
+						}else if (Directory.Exists(patchFolders[i] + @"\kh3d_first") || Directory.Exists(patchFolders[i] + @"\kh3d_second") || Directory.Exists(patchFolders[i] + @"\kh3d_third") || Directory.Exists(patchFolders[i] + @"\kh3d_fourth")){
+							zip.Save("MyPatch.dddpcpatch");
 						}
 					}
 				}
@@ -133,8 +147,14 @@ class KHPCPatchManager{
 				Console.WriteLine("Applying " + patchType + "patch...");
 				string epicFolder = null;
 				while(!Directory.Exists(epicFolder)){
-					Console.WriteLine("Please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here:");
-					epicFolder = Console.ReadLine().Trim('"');
+					if (patchType == "KH1" || patchType == "KH2" || patchType == "BBS") {
+						Console.WriteLine("If you want to patch KH1, KH2 or BBS, please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here:");
+						epicFolder = Console.ReadLine().Trim('"');
+					}
+					else if (patchType == "DDD"){
+						Console.WriteLine("If you want to patch Dream Drop Distance, please drag your \"en\" folder (the one that contains kh3d_first, kh3d_second, etc.) located under \"Kingdom Hearts HD 2 8 Final Chapter Prologue/Image/\" here");
+						epicFolder = Console.ReadLine().Trim('"');
+					}
 				}
 				Console.WriteLine("Extracting patch...");
 				string timestamp = originFolder + "_" + DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss_ms");
@@ -167,8 +187,8 @@ class KHPCPatchManager{
 			}else{
 				Console.WriteLine("- Drop a .hed file to unpack the associated .pkg file");
 				Console.WriteLine("- Drop a .pkg file and its unpacked folder to patch it");
-				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch or a bbspcpatch");
-				Console.WriteLine("- Drop a kh1pcpatch, kh2pcpatch or a bbspcpatch to patch your .pkgs");
+				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch, bbspcpatch or a dddpcpatch");
+				Console.WriteLine("- Drop a kh1pcpatch, kh2pcpatch, bbspcpatch or a dddpcpatch to patch your .pkgs");
 			}
 		}catch(Exception e){
 			Console.WriteLine($"Error: {e}");
