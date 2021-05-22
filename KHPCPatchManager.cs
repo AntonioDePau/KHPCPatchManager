@@ -61,6 +61,9 @@ class KHPCPatchManager{
 		"kh3d_third",
 		"kh3d_fourth",
 	};
+	static string[] comfiles = new string[]{
+		"Recom"
+	};
 
 	static string patchType;
 	static string[] khFiles;
@@ -82,7 +85,7 @@ class KHPCPatchManager{
 		}
 		
 		Console.WriteLine($"KHPCPatchManager {version}");
-		string hedFile = null, pkgFile = null, pkgFolder = null, kh1pcpatchFile = null, kh2pcpatchFile = null, bbspcpatchFile = null, dddpcpatchFile = null, originFolder = null;
+		string hedFile = null, pkgFile = null, pkgFolder = null, kh1pcpatchFile = null, compcpatchFile = null, kh2pcpatchFile = null, bbspcpatchFile = null, dddpcpatchFile = null, originFolder = null;
 		List<string> patchFolders = new List<string>();
 		try{
 			for(int i=0;i<args.Length;i++){
@@ -103,6 +106,11 @@ class KHPCPatchManager{
 					kh2pcpatchFile = args[i];
 					originFolder = kh2pcpatchFile;
 					khFiles = kh2files;
+				}else if(Path.GetExtension(args[i]) == ".compcpatch"){
+					patchType = "COM";
+					compcpatchFile = args[i];
+					originFolder = compcpatchFile;
+					khFiles = comfiles;
 				}else if(Path.GetExtension(args[i]) == ".bbspcpatch"){
 					patchType = "BBS";
 					bbspcpatchFile = args[i];
@@ -135,6 +143,8 @@ class KHPCPatchManager{
 							zip.Save("MyPatch.kh1pcpatch");
 						}else if (Directory.Exists(patchFolders[i] + @"\kh2_first") || Directory.Exists(patchFolders[i] + @"\kh2_second") || Directory.Exists(patchFolders[i] + @"\kh2_third") || Directory.Exists(patchFolders[i] + @"\kh2_fourth") || Directory.Exists(patchFolders[i] + @"\kh2_fifth") || Directory.Exists(patchFolders[i] + @"\kh2_sixth")){
 							zip.Save("MyPatch.kh2pcpatch");
+						}else if (Directory.Exists(patchFolders[i] + @"\Recom")){
+							zip.Save("MyPatch.compcpatch");
 						}else if (Directory.Exists(patchFolders[i] + @"\bbs_first") || Directory.Exists(patchFolders[i] + @"\bbs_second") || Directory.Exists(patchFolders[i] + @"\bbs_third") || Directory.Exists(patchFolders[i] + @"\bbs_fourth")){
 							zip.Save("MyPatch.bbspcpatch");
 						}else if (Directory.Exists(patchFolders[i] + @"\kh3d_first") || Directory.Exists(patchFolders[i] + @"\kh3d_second") || Directory.Exists(patchFolders[i] + @"\kh3d_third") || Directory.Exists(patchFolders[i] + @"\kh3d_fourth")){
@@ -147,8 +157,8 @@ class KHPCPatchManager{
 				Console.WriteLine("Applying " + patchType + "patch...");
 				string epicFolder = null;
 				while(!Directory.Exists(epicFolder)){
-					if (patchType == "KH1" || patchType == "KH2" || patchType == "BBS") {
-						Console.WriteLine("If you want to patch KH1, KH2 or BBS, please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here:");
+					if (patchType == "KH1" || patchType == "KH2" || patchType == "BBS"|| patchType == "COM") {
+						Console.WriteLine("If you want to patch KH1, KH2, Recom or BBS, please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here:");
 						epicFolder = Console.ReadLine().Trim('"');
 					}
 					else if (patchType == "DDD"){
@@ -187,8 +197,8 @@ class KHPCPatchManager{
 			}else{
 				Console.WriteLine("- Drop a .hed file to unpack the associated .pkg file");
 				Console.WriteLine("- Drop a .pkg file and its unpacked folder to patch it");
-				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch, bbspcpatch or a dddpcpatch");
-				Console.WriteLine("- Drop a kh1pcpatch, kh2pcpatch, bbspcpatch or a dddpcpatch to patch your .pkgs");
+				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch or a dddpcpatch");
+				Console.WriteLine("- Drop a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch or a dddpcpatch to patch your .pkgs");
 			}
 		}catch(Exception e){
 			Console.WriteLine($"Error: {e}");
