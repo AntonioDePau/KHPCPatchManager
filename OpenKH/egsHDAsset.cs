@@ -98,10 +98,7 @@ namespace OpenKh.Egs
 			Array.Copy(data, 0, paddedData, 0, data.Length);
 			
 			if(entry.CompressedLength>=-1){
-				for (var i = 0; i < Math.Min(paddedData.Length, 0x100); i += 0x10)
-				{
-					EgsEncryption.DecryptChunk(_key, paddedData, i, PassCount);
-				}
+				DecryptData(paddedData);
 			}
 
             if (entry.CompressedLength >= 0)
@@ -134,8 +131,7 @@ namespace OpenKh.Egs
 			
             if (_header.CompressedLength >= -1)
             {
-                for (var i = 0; i < Math.Min(data.Length, 0x100); i += 0x10)
-                    EgsEncryption.DecryptChunk(_key, data, i, PassCount);
+				DecryptData(data);
             }
 
             if (_header.CompressedLength >= 0)
@@ -150,6 +146,12 @@ namespace OpenKh.Egs
             }
 			
 			return data;
+		}
+		
+		public void DecryptData(byte[] data)
+		{
+			for (var i = 0; i < Math.Min(data.Length, 0x100); i += 0x10)
+				EgsEncryption.DecryptChunk(_key, data, i, PassCount);
 		}
     }
 }

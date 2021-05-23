@@ -214,6 +214,7 @@ namespace OpenKh.Command.IdxImg
 					
                     var filesToReplace = GetAllFiles(inputFolder);
                     var originalfilename = GetRelativePath(filename, Path.Combine(InputFolder, ORIGINAL_FILES_FOLDER_NAME));
+					bool updatedOriginal = false;
 					
 					byte[] data = new byte[asset.OriginalAssetHeader.DecompressedLength];
 					byte[] compressedData = new byte[]{};
@@ -224,32 +225,37 @@ namespace OpenKh.Command.IdxImg
                         asset.OriginalAssetHeader.RemasteredAssetCount,
                         asset.OriginalAssetHeader.Unknown0c
                     );
-                    var encryptionKey = asset.Key;
+					
+					// The seed used for encryption is the data header6
+					var seed = new MemoryStream();
+					BinaryMapping.WriteObject<EgsHdAsset.Header>(seed, header);
+					var encryptionKey = seed.ReadAllBytes();
+					
 					if (filesToReplace.Contains(originalfilename))
 					{
+						updatedOriginal = true;
 						Console.WriteLine($"Replacing original: {originalfilename}!");
 						Console.WriteLine(header.CompressedLength);
+						
 						// Read Raw data to set the correct offset even if we're reading from an external file
 						data = asset.ReadRawData();
-						header.DecompressedLength = data.Length;
 						data = File.ReadAllBytes(filename);
 						header.DecompressedLength = data.Length;
 						compressedData = header.CompressedLength > -1 ? CompressData(data) : data;
 						if(header.CompressedLength > -1) header.CompressedLength = compressedData.Length;
 						Console.WriteLine(header.CompressedLength);
+						
+						// Update the seed and encryptionKey with the new file's header
+						seed = new MemoryStream();
+						BinaryMapping.WriteObject<EgsHdAsset.Header>(seed, header);
+						encryptionKey = seed.ReadAllBytes();
+						
 						if(header.CompressedLength > -2){
-							var seed = new MemoryStream();
-							
-							// The seed used for encryption is the data header6
-							BinaryMapping.WriteObject<EgsHdAsset.Header>(seed, header);
-							encryptionKey = seed.ReadAllBytes();
-							
 							// Encrypt file
 							encryptedData = header.CompressedLength > 2 ? EgsEncryption.Encrypt(compressedData, encryptionKey) : compressedData;
 						}
 					}else{
 						Console.WriteLine($"Keeping original: {originalfilename}!");
-						//data = asset.ReadRawData();
 						compressedData = asset.ReadRawData();
 						encryptedData = compressedData;
 					}				
@@ -261,7 +267,7 @@ namespace OpenKh.Command.IdxImg
                     // Is there remastered assets?
                     if (header.RemasteredAssetCount > 0)
                     {
-                        remasteredHeaders = ReplaceRemasteredAssets(originalfilename, asset, pkgStream, encryptionKey, encryptedData, data);
+                        remasteredHeaders = ReplaceRemasteredAssets(originalfilename, asset, pkgStream, encryptionKey, encryptedData, data, updatedOriginal);
 
                         // If a remastered asset is not replaced, we still want to count its size for the HED entry
 						
@@ -287,7 +293,7 @@ namespace OpenKh.Command.IdxImg
                     return hedEntry;
                 }
 
-                private List<EgsHdAsset.RemasteredEntry> ReplaceRemasteredAssets(string originalFile, EgsHdAsset asset, FileStream pkgStream, byte[] seed, byte[] originalAssetData, byte[] originalUncompressedData)
+                private List<EgsHdAsset.RemasteredEntry> ReplaceRemasteredAssets(string originalFile, EgsHdAsset asset, FileStream pkgStream, byte[] seed, byte[] originalAssetData, byte[] originalUncompressedData, bool updatedOriginal)
                 {
                     var newRemasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
                     var relativePath = GetRelativePath(originalFile, Path.Combine(InputFolder, ORIGINAL_FILES_FOLDER_NAME));
@@ -319,8 +325,14 @@ namespace OpenKh.Command.IdxImg
 							encryptedData = asset.RemasteredAssetHeaders[remasteredAssetFile].CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, seed) : compressedData;
 						}else{
 							Console.WriteLine($"Keeping remastered file: {relativePath}/{remasteredAssetFile}");
+							
+							// TODO: decrypt remastered assets and re-encrypt them with the new key if the original asset has changed
 							encryptedData = asset.ReadRawRemasteredAsset(remasteredAssetFile);
 							uncompressedData = new byte[asset.RemasteredAssetHeaders[remasteredAssetFile].DecompressedLength];
+							if(updatedOriginal && asset.RemasteredAssetHeaders[remasteredAssetFile].CompressedLength > -2){
+								asset.DecryptData(encryptedData);
+								encryptedData = EgsEncryption.Encrypt(encryptedData, seed);
+							}
 						}
 
 						var currentOffset = totalRemasteredAssetHeadersSize + offsetPosition + 0x10;
