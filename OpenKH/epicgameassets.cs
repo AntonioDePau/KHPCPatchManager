@@ -158,12 +158,6 @@ namespace OpenKh.Command.IdxImg
 					OutputDir = outputFolder;
                     var originalFilesFolder = Path.Combine(InputFolder, ORIGINAL_FILES_FOLDER_NAME);
 
-                    if (!Directory.Exists(originalFilesFolder))
-                    {
-                        Console.WriteLine($"Unable to find folder {originalFilesFolder}, please make sure files to packs are there.");
-                        return -1;
-                    }
-
                     Patch(PkgFile, originalFilesFolder, OutputDir);
 
                     return 0;
@@ -398,6 +392,7 @@ namespace OpenKh.Command.IdxImg
 
             private static IEnumerable<string> GetAllFiles(string folder)
             {
+				if(!Directory.Exists(folder)) return Enumerable.Empty<string>();
                 return Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories)
                                 .Select(x => x.Replace($"{folder}\\", "")
                                 .Replace(@"\", "/"));
