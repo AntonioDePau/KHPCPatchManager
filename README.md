@@ -15,7 +15,7 @@
 1. Download the [latest release](https://github.com/AntonioDePau/KHPCPatchManager/releases) or compile the binary yourself
 2. Make sure you have a "resources" folder (in the same directory as the tool) with all the .txt containing the files' names (you can get one along with a release)
 3. Create a folder for your patch, let's call it "MyPatch" for example
-4. Place your edited files in that folder, under <pkg_name>, and then under "original" or "remastered" (based on where the unedited files where located when you extracted them) following the initial folder and file structure.
+4. Place your edited files in that folder, under <pkg_name>, and then under "original" or "remastered" (based on where the unedited files were located when you extracted them) following the initial folders and files structure.
 For instance, if you wanted to edit Sora's high-poly 3D model and textures (which are located in kh2_sixth), your "MyPatch" folder would have to look like this:
 ```
 MyPatch
