@@ -153,7 +153,8 @@ class KHPCPatchManager{
 				Console.WriteLine("Done!");
 			}else if(originFolder != null){
 				Console.WriteLine("Applying " + patchType + "patch...");
-				string epicFolder = null;
+				string epicFolder = @"C:\Program Files\Epic Games\KH_1.5_2.5\Image\en\";
+				if(patchType == "DDD") epicFolder = null;
 				while(!Directory.Exists(epicFolder)){
 					if (patchType == "KH1" || patchType == "KH2" || patchType == "BBS"|| patchType == "COM") {
 						Console.WriteLine("If you want to patch KH1, KH2, Recom or BBS, please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here, and press Enter:");
