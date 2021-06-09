@@ -125,13 +125,11 @@ class KHPCPatchManager{
 			}
 			if(hedFile != null){
 				Console.WriteLine("Extracting pkg...");
-				var egs = new OpenKh.Command.IdxImg.Program.EpicGamesAssets.ExtractCommand();
-				egs.Execute(hedFile, hedFile + "_out");
+				OpenKh.Egs.EgsTools.Extract(hedFile, hedFile + "_out");
 				Console.WriteLine("Done!");
 			}else if(pkgFile != null && pkgFolder != null){
 				Console.WriteLine("Patching pkg...");
-				var egs = new OpenKh.Command.IdxImg.Program.EpicGamesAssets.PatchCommand();
-				egs.Execute(pkgFile, pkgFolder, pkgFolder + "_out");
+				OpenKh.Egs.EgsTools.Patch(pkgFile, pkgFolder, pkgFolder + "_out");
 				Console.WriteLine("Done!");
 			}else if(pkgFile == null && pkgFolder != null){
 				Console.WriteLine("Creating patch...");
@@ -158,11 +156,11 @@ class KHPCPatchManager{
 				string epicFolder = null;
 				while(!Directory.Exists(epicFolder)){
 					if (patchType == "KH1" || patchType == "KH2" || patchType == "BBS"|| patchType == "COM") {
-						Console.WriteLine("If you want to patch KH1, KH2, Recom or BBS, please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here:");
+						Console.WriteLine("If you want to patch KH1, KH2, Recom or BBS, please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here, and press Enter:");
 						epicFolder = Console.ReadLine().Trim('"');
 					}
 					else if (patchType == "DDD"){
-						Console.WriteLine("If you want to patch Dream Drop Distance, please drag your \"en\" folder (the one that contains kh3d_first, kh3d_second, etc.) located under \"Kingdom Hearts HD 2 8 Final Chapter Prologue/Image/\" here");
+						Console.WriteLine("If you want to patch Dream Drop Distance, please drag your \"en\" folder (the one that contains kh3d_first, kh3d_second, etc.) located under \"Kingdom Hearts HD 2 8 Final Chapter Prologue/Image/\" here, and press Enter:");
 						epicFolder = Console.ReadLine().Trim('"');
 					}
 				}
@@ -185,8 +183,7 @@ class KHPCPatchManager{
 						if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
 						File.Move(epicHedFile, epicHedBackupFile);
 						Console.WriteLine($"Patching {epicFile}...");
-						var egs = new OpenKh.Command.IdxImg.Program.EpicGamesAssets.PatchCommand();
-						egs.Execute(epicPkgBackupFile, patchFolder, epicFolder);
+						OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, patchFolder, epicFolder);
 					}else{
 						Console.WriteLine($"Could not find {khFiles[i]} n/or any patch for it.");
 					}
