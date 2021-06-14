@@ -1,9 +1,6 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
 	<LangVersion>9.0</LangVersion>
-	<!--<TargetFramework>netcoreapp3.0</TargetFramework>-->
-	
-    <!--<TargetFramework>netstandard2.0</TargetFramework>-->
 	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <TargetFramework>net5.0</TargetFramework>
 	<PublishReadyToRun>true</PublishReadyToRun>
@@ -43,7 +40,11 @@
   <ItemGroup>
 	<EmbeddedResource Include="./packages/DotNetZip.dll" />
 	<EmbeddedResource Include="./hashpairs.zip" />
+	<EmbeddedResource Include="./kh.ico" />
   </ItemGroup>
+  <PropertyGroup>
+	<applicationicon>kh.ico</applicationicon>
+  </PropertyGroup>
   <Target Name="Build">
     <Csc Sources="@(Compile)" References="@(Reference)" Resources="@(EmbeddedResource)"/>  
   </Target>
