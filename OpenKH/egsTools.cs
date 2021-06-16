@@ -158,7 +158,7 @@ namespace OpenKh.Egs
                 // We don't know this filename, we ignore it
                 if (!Names.TryGetValue(hash, out var filename))
                 {
-                    throw new Exception("Unknown filename!");
+                    throw new Exception($"Unknown filename (hash: {hash})");
                 }
 
                 if (patchFiles.Contains(filename))
