@@ -15,6 +15,7 @@ namespace OpenKh.Egs
 
         public static IEnumerable<string> GetAllFiles(string folder)
         {
+			if(!Directory.Exists(folder)) return Enumerable.Empty<string>();
             return Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories)
                             .Select(x => x.Replace($"{folder}\\", "")
                             .Replace(@"\", "/"));
