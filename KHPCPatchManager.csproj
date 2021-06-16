@@ -39,7 +39,7 @@
   </ItemGroup>
   <ItemGroup>
 	<EmbeddedResource Include="./packages/DotNetZip.dll" />
-	<EmbeddedResource Include="./hashpairs.zip" />
+	<EmbeddedResource Include="./resources.zip" />
 	<EmbeddedResource Include="./kh.ico" />
   </ItemGroup>
   <PropertyGroup>

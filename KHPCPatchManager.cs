@@ -87,7 +87,7 @@ class KHPCPatchManager{
 		version = "v" + fvi.ProductVersion;
 		
 		if(!Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "/resources")){
-			string resourceName = ExecutingAssembly.GetManifestResourceNames().Single(str => str.EndsWith("hashpairs.zip"));
+			string resourceName = ExecutingAssembly.GetManifestResourceNames().Single(str => str.EndsWith("resources.zip"));
 			using (Stream stream = ExecutingAssembly.GetManifestResourceStream(resourceName)){
 				ZipFile zip = ZipFile.Read(stream);
 				Directory.CreateDirectory("resources");
