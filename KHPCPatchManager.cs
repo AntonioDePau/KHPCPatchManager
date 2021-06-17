@@ -87,12 +87,7 @@ class KHPCPatchManager{
 		version = "v" + fvi.ProductVersion;
 		
 		if(!Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "/resources")){
-			string resourceName = ExecutingAssembly.GetManifestResourceNames().Single(str => str.EndsWith("resources.zip"));
-			using (Stream stream = ExecutingAssembly.GetManifestResourceStream(resourceName)){
-				ZipFile zip = ZipFile.Read(stream);
-				Directory.CreateDirectory("resources");
-				zip.ExtractSelectedEntries("*.txt", "resources", "", ExtractExistingFileAction.OverwriteSilently);
-			}
+			UpdateResources();
 			/*Console.WriteLine("Please make sure you have a \"resources\" folder containing the hashpairs!");
 			Console.ReadLine();
 			return;*/
@@ -174,6 +169,15 @@ class KHPCPatchManager{
 		}
 		if(!GUI_Displayed) Console.ReadLine();
     }
+	
+	static void UpdateResources(){
+		string resourceName = ExecutingAssembly.GetManifestResourceNames().Single(str => str.EndsWith("resources.zip"));
+		using (Stream stream = ExecutingAssembly.GetManifestResourceStream(resourceName)){
+			ZipFile zip = ZipFile.Read(stream);
+			Directory.CreateDirectory("resources");
+			zip.ExtractSelectedEntries("*.txt", "resources", "", ExtractExistingFileAction.OverwriteSilently);
+		}
+	}
 	
 	static int filesExtracted = 0;
 	static int totalFiles = 0;
@@ -269,6 +273,7 @@ class KHPCPatchManager{
 	static Button selPatchButton = new Button();
 	static Button applyPatchButton = new Button();
 	static void InitUI(){
+		UpdateResources();
 		GUI_Displayed = true;
 		var handle = GetConsoleWindow();
 		string defaultEpicFolder = @"C:\Program Files\Epic Games\KH_1.5_2.5\Image\en\";
