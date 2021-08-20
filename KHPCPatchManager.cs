@@ -11,10 +11,11 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.ComponentModel;
 
-class KHPCPatchManager{	
+public class KHPCPatchManager{	
 	static Assembly ExecutingAssembly = Assembly.GetExecutingAssembly();
 	static string[] EmbeddedLibraries = ExecutingAssembly.GetManifestResourceNames().Where(x => x.EndsWith(".dll")).ToArray();
 	static bool GUI_Displayed = false;
+	public static string HashpairPath = "resources";
 	
 	[DllImport("kernel32.dll")]
 	static extern IntPtr GetConsoleWindow();
@@ -94,6 +95,12 @@ class KHPCPatchManager{
 		}
 		
 		Console.WriteLine($"KHPCPatchManager {version}");
+		
+		if(Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "/custom_hashpairs")){
+			HashpairPath = "custom_hashpairs";
+			Console.WriteLine($"\nCustom hashpairs directory detected!\nUsing hashpairs located in {HashpairPath}\\.\n");
+		}
+		
 		string hedFile = null, pkgFile = null, pkgFolder = null, kh1pcpatchFile = null, compcpatchFile = null, kh2pcpatchFile = null, bbspcpatchFile = null, dddpcpatchFile = null, originFolder = null;
 		List<string> patchFolders = new List<string>();
 		try{
@@ -285,7 +292,7 @@ class KHPCPatchManager{
 		f.Size = new Size(300, 150);
 		f.Text = $"KHPCPatchManager {version}";
 		
-		status.Text = "";
+		status.Text = HashpairPath=="resources" ? "" : "Using \"custom_hashpairs\\\" hashpairs";
 		f.Controls.Add(status);
 		
 		Label patch = new Label();
