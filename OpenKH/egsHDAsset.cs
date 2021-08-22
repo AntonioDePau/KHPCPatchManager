@@ -25,7 +25,7 @@ namespace OpenKh.Egs
             [Data(Count = 0x20)] public string Name { get; set; }
             // The offset is relative to: Original asset's header size + all remastered asset's header size + original asset's decompressed data length
             [Data] public int Offset { get; set; }
-            [Data] public int Unknown24 { get; set; }
+            [Data] public int OriginalAssetOffset { get; set; }
             [Data] public int DecompressedLength { get; set; }
             [Data] public int CompressedLength { get; set; }
         }
