@@ -150,6 +150,8 @@ namespace OpenKh.Egs
 
             using var patchedHedStream = File.Create(Path.Combine(outputDir, Path.GetFileName(hedFile)));
             using var patchedPkgStream = File.Create(Path.Combine(outputDir, Path.GetFileName(pkgFile)));
+			
+			File.WriteAllText("custom_hd_assets.txt", "");
 
             foreach (var hedHeader in hedHeaders)
             {
@@ -359,7 +361,7 @@ namespace OpenKh.Egs
             }
 
 			int remasteredEntryIndex = 0;
-			
+			File.AppendAllText("custom_hd_assets.txt", $"File: {originalFile}");
             foreach (var remasteredAssetHeader in asset.RemasteredAssetHeaders.Values)
             {
                 var filename = remasteredAssetHeader.Name;
@@ -370,10 +372,10 @@ namespace OpenKh.Egs
                 var decompressedLength = remasteredAssetHeader.DecompressedLength;
 				
 				var originalAssetOffset = remasteredAssetHeader.OriginalAssetOffset;
-
                 if (File.Exists(assetFilePath))
                 {
                     Console.WriteLine($"Replacing remastered file: {relativePath}/{filename}");
+					File.AppendAllText("custom_hd_assets.txt", $"\nHD (replacing): {relativePath}/{filename}");
 
                     assetData = File.ReadAllBytes(assetFilePath);
                     decompressedLength = assetData.Length;
@@ -381,10 +383,12 @@ namespace OpenKh.Egs
                     assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
 					int newAssetOffset = GetOriginalAssetOffset(remasteredEntryIndex, originalDecompressedData, originalFile);
 					if(newAssetOffset!=-1) originalAssetOffset = newAssetOffset;
+					File.AppendAllText("custom_hd_assets.txt", "\noffset: " +  BitConverter.ToString(BitConverter.GetBytes(newAssetOffset)).Replace("-",""));
                 }
                 else
                 {
                     Console.WriteLine($"Keeping remastered file: {relativePath}/{filename}");
+					File.AppendAllText("custom_hd_assets.txt", $"\nHD (keeping): {relativePath}/{filename}");
 
                     // The original file have been replaced, we need to encrypt all remastered asset with the new key
                     if (!seed.SequenceEqual(asset.Seed))
@@ -394,6 +398,7 @@ namespace OpenKh.Egs
                         assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
 						int newAssetOffset = GetOriginalAssetOffset(remasteredEntryIndex, originalDecompressedData, originalFile);
 						if(newAssetOffset!=-1) originalAssetOffset = newAssetOffset;
+						File.AppendAllText("custom_hd_assets.txt",  "\noffset: " +  BitConverter.ToString(BitConverter.GetBytes(newAssetOffset)).Replace("-",""));
                     }
                 }
 
@@ -426,6 +431,7 @@ namespace OpenKh.Egs
                 offset += decompressedLength;
 				remasteredEntryIndex++;
             }
+			File.AppendAllText("custom_hd_assets.txt", "\n\n");
 
             pkgStream.Write(originalAssetData);
             pkgStream.Write(allRemasteredAssetsData.ReadAllBytes());
@@ -439,13 +445,16 @@ namespace OpenKh.Egs
 			using(MemoryStream ms = new MemoryStream(originalAssetData)){
 				ms.Seek(0x28, SeekOrigin.Begin);
 				int TIMoffset = ms.ReadInt32();
-				ms.Seek(TIMoffset + 12, SeekOrigin.Begin);
+				File.AppendAllText("custom_hd_assets.txt", "\nTIM offset: " + BitConverter.ToString(BitConverter.GetBytes(TIMoffset)).Replace("-",""));
+				ms.Seek(TIMoffset + 0x0c, SeekOrigin.Begin);
 				int textureCount = ms.ReadInt32();
+				File.AppendAllText("custom_hd_assets.txt", "\nTexture count: " + BitConverter.ToString(BitConverter.GetBytes(textureCount)).Replace("-",""));
 				//Console.WriteLine("Textures: " + textureCount);
 				ms.ReadInt32();
 				ms.ReadInt32();
 				int infoOffset = ms.ReadInt32();
 				int dataOffset = ms.ReadInt32();
+				File.AppendAllText("custom_hd_assets.txt", "\nData offset: " + BitConverter.ToString(BitConverter.GetBytes(dataOffset)).Replace("-",""));
 				int diff = 0;
 				if(remasteredEntryIndex < textureCount){
 					for(int i = 0; i<textureCount; i++){
@@ -454,12 +463,14 @@ namespace OpenKh.Egs
 							//Console.WriteLine(BitConverter.ToString(BitConverter.GetBytes(finalOffset)));
 							break;
 						}
-						int textInfoOffset = TIMoffset + infoOffset + 32 + 64 + 16 + (160 * remasteredEntryIndex);
+						int textInfoOffset = TIMoffset + infoOffset + 0x20 + 0x40 + 0x10 + (0xA0 * i);
 						ms.Seek(textInfoOffset, SeekOrigin.Begin);
 						ulong num = ms.ReadUInt64();
 						int width = (ushort)(1u << ((int)(num >> 0x1A) & 0x0F));
 						int height = (ushort)(1u << ((int)(num >> 0x1E) & 0x0F));
 						diff+=width*height;
+						File.AppendAllText("custom_hd_assets.txt", "\nSize: " + width + " x " + height);
+						File.AppendAllText("custom_hd_assets.txt", "\nTotal Size: " + diff);
 					}
 				}else{
 					int count = textureCount;
@@ -470,10 +481,12 @@ namespace OpenKh.Egs
 					}
 					ms.Seek(index + 0x0a, SeekOrigin.Begin);
 					int imageToApplyTo = (int)ms.ReadInt16();
+					File.AppendAllText("custom_hd_assets.txt", "\nTEXa applies to: " + imageToApplyTo);
 					
 					ms.Seek(0x1c, SeekOrigin.Current);
 					int texaOffset = ms.ReadInt32();
-					finalOffset = index + texaOffset + 8 + (imageToApplyTo * 0x10) + 0x20000000;
+					File.AppendAllText("custom_hd_assets.txt", "\nTEXa offset: " + texaOffset);
+					finalOffset = index + texaOffset + 0x08 + (imageToApplyTo * 0x10) + 0x20000000;
 					//Console.WriteLine(BitConverter.ToString(BitConverter.GetBytes(finalOffset)));
 				}
 			}
