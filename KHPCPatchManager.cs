@@ -250,6 +250,7 @@ public class KHPCPatchManager{
 						OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, patchFolder, epicFolder);
 					}
 				}
+				Directory.Delete(timestamp, true);
 				if(!foundFolder){
 					string error = "Could not find any folder to patch!\nMake sure you are using the correct path for the \"en\" folder!";
 					Console.WriteLine(error);
@@ -258,18 +259,17 @@ public class KHPCPatchManager{
 				}else{
 					if(GUI_Displayed) status.Text = "";
 					if(GUI_Displayed) MessageBox.Show("Patch applied!");
+					Console.WriteLine("Done!");
 				}
 			};
             backgroundWorker1.RunWorkerCompleted += (s,e) => {
-				Directory.Delete(timestamp, true);
 				if(e.Error != null)
 				{
-					MessageBox.Show("There was an error! " + e.Error.ToString());
-				}else{
-					Console.WriteLine("Done!");
+					if(GUI_Displayed) MessageBox.Show("There was an error! " + e.Error.ToString());
+					Console.WriteLine("There was an error! " + e.Error.ToString());
 				}
-				selPatchButton.Enabled = true;
-				applyPatchButton.Enabled = true;
+				if(GUI_Displayed) selPatchButton.Enabled = true;
+				if(GUI_Displayed) applyPatchButton.Enabled = true;
 			};
             backgroundWorker1.WorkerReportsProgress = true;
 			backgroundWorker1.RunWorkerAsync();
