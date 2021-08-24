@@ -196,7 +196,7 @@ public class KHPCPatchManager{
 		if(GUI_Displayed) status.Text = $"Extracting patch: {percent}%";
 	}
 	
-	static void ApplyPatch(string patchFile, string patchType, string epicFolder = null){
+	static void ApplyPatch(string patchFile, string patchType, string epicFolder = null, bool backupPKG = true){
 		Console.WriteLine("Applying " + patchType + " patch...");
 		if(epicFolder == null){
 			epicFolder = @"C:\Program Files\Epic Games\KH_1.5_2.5\Image\en\";
@@ -238,8 +238,8 @@ public class KHPCPatchManager{
 					string epicFile = Path.Combine(epicFolder, khFiles[patchType][i] + ".pkg");
 					string epicHedFile = Path.Combine(epicFolder, khFiles[patchType][i] + ".hed");
 					string patchFolder = Path.Combine(timestamp, khFiles[patchType][i]);
-					string epicPkgBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + ".pkg");
-					string epicHedBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + ".hed");
+					string epicPkgBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + (!backupPKG ? "_" + timestamp : "") + ".pkg");
+					string epicHedBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + (!backupPKG ? "_" + timestamp : "") + ".hed");
 					if(Directory.Exists(patchFolder) && File.Exists(epicFile)){
 						foundFolder = true;
 						if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
@@ -248,6 +248,10 @@ public class KHPCPatchManager{
 						File.Move(epicHedFile, epicHedBackupFile);
 						backgroundWorker1.ReportProgress(0, $"Patching {khFiles[patchType][i]}...");
 						OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, patchFolder, epicFolder);
+						if(!backupPKG){
+							if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
+							if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
+						}
 					}
 				}
 				Directory.Delete(timestamp, true);
@@ -270,6 +274,7 @@ public class KHPCPatchManager{
 				}
 				if(GUI_Displayed) selPatchButton.Enabled = true;
 				if(GUI_Displayed) applyPatchButton.Enabled = true;
+				if(GUI_Displayed) backupOption.Enabled = true;
 			};
             backgroundWorker1.WorkerReportsProgress = true;
 			backgroundWorker1.RunWorkerAsync();
@@ -279,6 +284,7 @@ public class KHPCPatchManager{
 	static StatusBar status = new StatusBar();
 	static Button selPatchButton = new Button();
 	static Button applyPatchButton = new Button();
+	static MenuItem backupOption = new MenuItem();
 	static void InitUI(){
 		UpdateResources();
 		GUI_Displayed = true;
@@ -289,8 +295,9 @@ public class KHPCPatchManager{
 		string patchType = null;
 		Form f = new Form();
 		f.Icon = Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
-		f.Size = new Size(300, 150);
+		f.Size = new Size(350, 160);
 		f.Text = $"KHPCPatchManager {version}";
+		f.MinimumSize = new Size(350, 160);
 		
 		status.Text = HashpairPath=="resources" ? "" : "Using \"custom_hashpairs\\\" hashpairs";
 		f.Controls.Add(status);
@@ -299,6 +306,17 @@ public class KHPCPatchManager{
 		patch.Text = "Patch: ";
 		patch.AutoSize = true;
 		f.Controls.Add(patch);
+		
+		f.Menu = new MainMenu();
+		
+		MenuItem item = new MenuItem("Options");
+        f.Menu.MenuItems.Add(item);
+		
+		MenuItem backupOption = new MenuItem();
+		backupOption.Text = "Backup PKG";
+		backupOption.Checked = true;
+		backupOption.Click += (s,e) => backupOption.Checked = !backupOption.Checked;
+        item.MenuItems.AddRange(new MenuItem[]{backupOption});
 		
 		selPatchButton.Text = "Select patch";
 		f.Controls.Add(selPatchButton);
@@ -342,7 +360,8 @@ public class KHPCPatchManager{
 							epicFolder = temp;
 							selPatchButton.Enabled = false;
 							applyPatchButton.Enabled = false;
-							ApplyPatch(patchFile, patchType, epicFolder);
+							backupOption.Enabled = false;
+							ApplyPatch(patchFile, patchType, epicFolder, backupOption.Checked);
 						}else{
 							MessageBox.Show("Could not find \"\\Image\\en\" in the provided folder!\nPlease try again by selecting the correct folder.");
 						}
@@ -351,7 +370,8 @@ public class KHPCPatchManager{
 			}else{
 				selPatchButton.Enabled = false;
 				applyPatchButton.Enabled = false;
-				ApplyPatch(patchFile, patchType, epicFolder);
+				backupOption.Enabled = false;
+				ApplyPatch(patchFile, patchType, epicFolder, backupOption.Checked);
 			}
 		};
 		ShowWindow(handle, SW_HIDE);
