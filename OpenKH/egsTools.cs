@@ -126,7 +126,7 @@ namespace OpenKh.Egs
 
         #region Patch
 
-        public static void Patch(string pkgFile, string inputFolder, string outputFolder)
+        public static void Patch(string pkgFile, string inputFolder, string outputFolder, MyBackgroundWorker bgw1 = null)
         {
             // Get files to inject in the PKG to detect if we want to include new files or not
             // We only get the original files as for me it doesn't make sense to include
@@ -155,6 +155,7 @@ namespace OpenKh.Egs
 
             foreach (var hedHeader in hedHeaders)
             {
+				if(bgw1 != null) bgw1.ReportProgress(0, bgw1.PKG + ": " + (hedHeaders.IndexOf(hedHeader)+1) + "/" + hedHeaders.Count);
                 var hash = Helpers.ToString(hedHeader.MD5);
 
                 // We don't know this filename, we ignore it

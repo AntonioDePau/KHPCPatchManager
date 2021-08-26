@@ -11,6 +11,10 @@ using System.Windows.Forms;
 using System.Drawing;
 using System.ComponentModel;
 
+public class MyBackgroundWorker : BackgroundWorker{
+	public string PKG;
+}
+
 public class KHPCPatchManager{	
 	static Assembly ExecutingAssembly = Assembly.GetExecutingAssembly();
 	static string[] EmbeddedLibraries = ExecutingAssembly.GetManifestResourceNames().Where(x => x.EndsWith(".dll")).ToArray();
@@ -218,7 +222,7 @@ public class KHPCPatchManager{
 		using(ZipFile zip = ZipFile.Read(patchFile)){
 			totalFiles = zip.Count;
 			filesExtracted = 0;
-			BackgroundWorker backgroundWorker1 = new BackgroundWorker();
+			MyBackgroundWorker backgroundWorker1 = new MyBackgroundWorker();
 			backgroundWorker1.ProgressChanged += (s,e) => {
 				Console.WriteLine((string)e.UserState);
 				if(GUI_Displayed) status.Text = (string)e.UserState;
@@ -247,7 +251,8 @@ public class KHPCPatchManager{
 						if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
 						File.Move(epicHedFile, epicHedBackupFile);
 						backgroundWorker1.ReportProgress(0, $"Patching {khFiles[patchType][i]}...");
-						OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, patchFolder, epicFolder);
+						backgroundWorker1.PKG = khFiles[patchType][i];
+						OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, patchFolder, epicFolder, backgroundWorker1);
 						if(!backupPKG){
 							if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
 							if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
