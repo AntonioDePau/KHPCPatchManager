@@ -46,6 +46,6 @@
 	<applicationicon>kh.ico</applicationicon>
   </PropertyGroup>
   <Target Name="Build">
-    <Csc Sources="@(Compile)" References="@(Reference)" Resources="@(EmbeddedResource)"/>  
+    <Csc Sources="@(Compile)" References="@(Reference)" Resources="@(EmbeddedResource)" Win32Icon="kh.ico"/>  
   </Target>
 </Project>
