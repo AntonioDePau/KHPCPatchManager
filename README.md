@@ -39,6 +39,12 @@ MyPatch
 5. Drag your "MyPatch" folder onto the exe
 6. A "MyPatch" with the game's patch extension will be created
 
+## Using custom file names (hashes):
+1. Create a "custom_hashpairs" folder next to the tool
+2. Copy/paste all necessary resource files (.txt files containing the file names)
+3. Add your custom file names in the relevant .txt files
+
 ## A huge thank you to:
 - Noxalus: https://github.com/Noxalus/OpenKh/tree/feature/egs-hed-packer
 - Xeeynamo and the whole OpenKH team: https://github.com/Xeeynamo/OpenKh
+- DemonBoy (aka: DA) for making custom HD assets for custom MDLX files possible
