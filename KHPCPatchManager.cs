@@ -367,9 +367,9 @@ public class KHPCPatchManager{
 					Thanks to:<br>
 					<ul style='text-align:left'>
 						<li><a href='https://github.com/Noxalus/OpenKh/tree/feature/egs-hed-packer'>Noxalus</a></li>
-						<li>Xeeynamo and the whole <a href='https://github.com/Xeeynamo/OpenKh'>OpenKH</a> team</li>
+						<li><a href='https://twitter.com/xeeynamo'>Xeeynamo</a> and the whole <a href='https://github.com/Xeeynamo/OpenKh'>OpenKH</a> team</li>
 						<li>DemonBoy (aka: DA) for making custom HD assets for custom MDLX files possible</li>
-						<li>TieuLink for extensive testing and help in debugging</li>
+						<li><a href='https://twitter.com/tieulink'>TieuLink</a> for extensive testing and help in debugging</li>
 					</ul>
 					Source code: <a href='https://github.com/AntonioDePau/KHPCPatchManager'>GitHub</a><br>
 					Report bugs: <a href='https://github.com/AntonioDePau/KHPCPatchManager/issues'>GitHub</a><br>
