@@ -325,7 +325,7 @@ public class KHPCPatchManager{
 		f.Text = $"KHPCPatchManager {version}";
 		f.MinimumSize = new System.Drawing.Size(350, 300);
 		
-		status.Text = HashpairPath=="resources" ? "" : "Using \"custom_hashpairs\\\" hashpairs";
+		status.Text = HashpairPath=="resources" ? "" : "Using \"custom_hashpairs\"!";
 		f.Controls.Add(status);
 		
 		Label patch = new Label();
@@ -343,6 +343,52 @@ public class KHPCPatchManager{
 		backupOption.Checked = true;
 		backupOption.Click += (s,e) => backupOption.Checked = !backupOption.Checked;
         item.MenuItems.AddRange(new MenuItem[]{backupOption});
+		
+		item = new MenuItem("?");
+        f.Menu.MenuItems.Add(item);
+		
+		MenuItem helpOption = new MenuItem();
+		helpOption.Text = "About";
+		helpOption.Click += (s,e) => {
+			Form f2 = new Form();
+			f2.Text = "About - " + f.Text;
+			f2.Size = new System.Drawing.Size(450, 370);
+			f2.MinimumSize = new System.Drawing.Size(450, 370);
+			f2.Icon = Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
+			Color c = f2.BackColor;
+			string rgb = c.R.ToString() + ", " + c.G.ToString() + ", " + c.B.ToString();
+			WebBrowser wb = new WebBrowser();
+			wb.Dock = DockStyle.Fill;
+			wb.AutoSize = true;
+			wb.Size = new Size(f2.Width, f2.Height);
+			wb.Anchor = AnchorStyles.Top | AnchorStyles.Right | AnchorStyles.Left | AnchorStyles.Bottom;
+			wb.DocumentText = "<html style='font-family:calibri;overflow:hidden;width:97%;background-color: rgb(" + rgb + @")'><div style='width:100%;text-align:center;'>
+					Tool made by <b>AntonioDePau</b><br>
+					Thanks to:<br>
+					<ul style='text-align:left'>
+						<li><a href='https://github.com/Noxalus/OpenKh/tree/feature/egs-hed-packer'>Noxalus</a></li>
+						<li>Xeeynamo and the whole <a href='https://github.com/Xeeynamo/OpenKh'>OpenKH</a> team</li>
+						<li>DemonBoy (aka: DA) for making custom HD assets for custom MDLX files possible</li>
+						<li>TieuLink for extensive testing and help in debugging</li>
+					</ul>
+					Source code: <a href='https://github.com/AntonioDePau/KHPCPatchManager'>GitHub</a><br>
+					Report bugs: <a href='https://github.com/AntonioDePau/KHPCPatchManager/issues'>GitHub</a><br>
+					<br>
+					<b>Note:</b> <i>For some issues, you may want to contact the patch's author instead of me!</i>
+				</div>
+				</html>";
+			wb.Navigating += (s,e) => {
+				e.Cancel = true;
+				Process.Start(e.Url.ToString());
+			};
+			f2.Controls.Add(wb);
+			
+			f2.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+			f2.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+			f2.ResumeLayout(false);
+			f2.ShowDialog();
+		};
+        item.MenuItems.AddRange(new MenuItem[]{helpOption});
 		
 		selPatchButton.Text = "Select patch";
 		f.Controls.Add(selPatchButton);

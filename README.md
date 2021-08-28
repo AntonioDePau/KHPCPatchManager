@@ -48,3 +48,4 @@ MyPatch
 - Noxalus: https://github.com/Noxalus/OpenKh/tree/feature/egs-hed-packer
 - Xeeynamo and the whole OpenKH team: https://github.com/Xeeynamo/OpenKh
 - DemonBoy (aka: DA) for making custom HD assets for custom MDLX files possible
+- TieuLink for extensive testing and help in debugging
