@@ -490,11 +490,16 @@ namespace OpenKh.Egs
 			using(MemoryStream ms = new MemoryStream(originalAssetData)){
 				ms.ReadInt32();
 				int version = ms.ReadInt32();
-				if(version != 3){
+				if(version != 2 && version != 3 && version != 4){ //original: version != 3
 					Invalid = true;
 					return;
 				}
-				ms.Seek(0x28, SeekOrigin.Begin);
+				ms.Seek(0x24, SeekOrigin.Begin);
+				string tim_ = System.Text.Encoding.ASCII.GetString(ms.ReadBytes(4));
+				if(tim_ != "tim_"){
+					Invalid = true;
+					return;
+				}
 				int TIMoffset = ms.ReadInt32();
 				
 				ms.Seek(TIMoffset, SeekOrigin.Begin);
