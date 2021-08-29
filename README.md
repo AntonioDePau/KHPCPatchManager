@@ -39,6 +39,12 @@ MyPatch
 5. Drag your "MyPatch" folder onto the exe
 6. A "MyPatch" with the game's patch extension will be created
 
+## Using custom file names (hashes):
+These should be automatically added to "resources/custom_filenames.txt" when patching (filenames exist in the patches, so the tool will simply write the ones that aren't natively listed)
+As long as the user keeps these new entries in their "custom_filenames.txt" file, KHPCPatchManager will be able to handle these new files (extraction, re-patching, etc.).
+
 ## A huge thank you to:
 - Noxalus: https://github.com/Noxalus/OpenKh/tree/feature/egs-hed-packer
 - Xeeynamo and the whole OpenKH team: https://github.com/Xeeynamo/OpenKh
+- DemonBoy (aka: DA) for making custom HD assets for custom MDLX files possible
+- TieuLink for extensive testing and help in debugging

@@ -19,8 +19,8 @@ namespace OpenKh.Egs
 
         #region MD5 names
 
-        private static readonly IEnumerable<string> KH2Names = IdxName.Names
-            .Concat(IdxName.Names.Where(x => x.Contains("anm/")).SelectMany(x => new string[]
+        private static readonly IEnumerable<string> KH2Names = EgsHdAsset.KH2Names
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.Contains("anm/")).SelectMany(x => new string[]
             {
                     x.Replace("anm/", "anm/jp/"),
                     x.Replace("anm/", "anm/us/"),
@@ -35,11 +35,11 @@ namespace OpenKh.Egs
             .Concat(Kh2.Constants.Languages.SelectMany(lang =>
                 Kh2.Constants.WorldIds.SelectMany(world =>
                     Enumerable.Range(0, 64).Select(index => Path.Combine("map", lang).Replace('\\', '/') + $"/{world}{index:D02}.bar"))))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("bgm/")).Select(x => x.Replace(".bgm", ".win32.scd")))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("se/")).Select(x => x.Replace(".seb", ".win32.scd")))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("vagstream/")).Select(x => x.Replace(".vas", ".win32.scd")))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("gumibattle/se/")).Select(x => x.Replace(".seb", ".win32.scd")))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("voice/")).Select(x => x
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("bgm/")).Select(x => x.Replace(".bgm", ".win32.scd")))
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("se/")).Select(x => x.Replace(".seb", ".win32.scd")))
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("vagstream/")).Select(x => x.Replace(".vas", ".win32.scd")))
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("gumibattle/se/")).Select(x => x.Replace(".seb", ".win32.scd")))
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("voice/")).Select(x => x
                 .Replace(".vag", ".win32.scd")
                 .Replace(".vsb", ".win32.scd")))
             .Concat(new string[]
@@ -60,6 +60,7 @@ namespace OpenKh.Egs
             .Concat(EgsHdAsset.TheaterNames)
             .Concat(EgsHdAsset.Kh1AdditionalNames)
             .Concat(EgsHdAsset.Launcher28Names)
+            .Concat(EgsHdAsset.CustomNames)
             .Concat(new string[] { "dummy.txt" })
             .Distinct()
             .ToDictionary(x => Helpers.ToString(Extensions.GetHashData(Encoding.UTF8.GetBytes(x))), x => x);
@@ -126,7 +127,7 @@ namespace OpenKh.Egs
 
         #region Patch
 
-        public static void Patch(string pkgFile, string inputFolder, string outputFolder)
+        public static void Patch(string pkgFile, string inputFolder, string outputFolder, MyBackgroundWorker bgw1 = null)
         {
             // Get files to inject in the PKG to detect if we want to include new files or not
             // We only get the original files as for me it doesn't make sense to include
@@ -147,18 +148,22 @@ namespace OpenKh.Egs
 
             if (!Directory.Exists(outputDir))
                 Directory.CreateDirectory(outputDir);
+			
+			File.WriteAllText("custom_hd_assets.txt", "");
 
             using var patchedHedStream = File.Create(Path.Combine(outputDir, Path.GetFileName(hedFile)));
             using var patchedPkgStream = File.Create(Path.Combine(outputDir, Path.GetFileName(pkgFile)));
 
             foreach (var hedHeader in hedHeaders)
             {
+				if(bgw1 != null) bgw1.ReportProgress(0, bgw1.PKG + ": " + (hedHeaders.IndexOf(hedHeader)+1) + "/" + hedHeaders.Count);
                 var hash = Helpers.ToString(hedHeader.MD5);
 
                 // We don't know this filename, we ignore it
                 if (!Names.TryGetValue(hash, out var filename))
                 {
-                    throw new Exception($"Unknown filename (hash: {hash})");
+					Console.WriteLine($"Unknown filename (hash: {hash})");
+					continue;
                 }
 
                 if (patchFiles.Contains(filename))
@@ -239,6 +244,10 @@ namespace OpenKh.Egs
                 DataLength = (int)(pkgStream.Position - offset),
                 Offset = offset
             };
+			
+            if (!Names.TryGetValue(Helpers.ToString(hedHeader.MD5), out var existingfilename)){
+				File.AppendAllText("resources/custom_filenames.txt", filename + "\n");
+            }
 
             BinaryMapping.WriteObject<Hed.Entry>(hedStream, hedHeader);
 
@@ -272,6 +281,7 @@ namespace OpenKh.Egs
             var encryptedData = asset.OriginalRawData;
             var encryptionSeed = asset.Seed;
 
+			MDLX mdlx = null;
             // We want to replace the original file
             if (File.Exists(completeFilePath))
             {
@@ -279,6 +289,10 @@ namespace OpenKh.Egs
 
                 using var newFileStream = File.OpenRead(completeFilePath);
                 decompressedData = newFileStream.ReadAllBytes();
+				
+				if(filename.IndexOf(".mdlx") > -1) mdlx = new MDLX(decompressedData);
+				
+				if(mdlx != null && !mdlx.Invalid) header.RemasteredAssetCount = mdlx.TextureCount;
 
                 var compressedData = decompressedData.ToArray();
                 var compressedDataLenght = originalHeader.CompressedLength;
@@ -292,7 +306,6 @@ namespace OpenKh.Egs
 
                 header.CompressedLength = compressedDataLenght;
                 header.DecompressedLength = decompressedData.Length;
-
                 // Encrypt and write current file data in the PKG stream
 
                 // The seed used for encryption is the original data header
@@ -302,7 +315,7 @@ namespace OpenKh.Egs
                 encryptionSeed = seed.ReadAllBytes();
                 encryptedData = header.CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, encryptionSeed) : compressedData;
             }
-
+			
             // Write original file header
             BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
 
@@ -311,7 +324,7 @@ namespace OpenKh.Egs
             // Is there remastered assets?
             if (header.RemasteredAssetCount > 0)
             {
-                remasteredHeaders = ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData);
+                remasteredHeaders = ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, mdlx);
             }
             else
             {
@@ -342,32 +355,57 @@ namespace OpenKh.Egs
             return hedHeader;
         }
 
-        private static List<EgsHdAsset.RemasteredEntry> ReplaceRemasteredAssets(string inputFolder, string originalFile, EgsHdAsset asset, FileStream pkgStream, byte[] seed, byte[] originalAssetData)
+        private static List<EgsHdAsset.RemasteredEntry> ReplaceRemasteredAssets(string inputFolder, string originalFile, EgsHdAsset asset, FileStream pkgStream, byte[] seed, byte[] originalAssetData, MDLX mdlx)
         {
             var newRemasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
+            var oldRemasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
             var relativePath = Helpers.GetRelativePath(originalFile, Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME));
             var remasteredAssetsFolder = Path.Combine(inputFolder, REMASTERED_FILES_FOLDER_NAME, relativePath);
 
             var allRemasteredAssetsData = new MemoryStream();
+            
+            foreach (var remasteredAssetHeader in asset.RemasteredAssetHeaders.Values){
+            	oldRemasteredHeaders.Add(remasteredAssetHeader);
+            }
+			oldRemasteredHeaders = oldRemasteredHeaders.OrderBy(o=>o.Name).ToList();
+
+			//At the moment this only applies on fresh PKGs (or ones that haven't been patched with this modded MDLX before, otherwise we'd neet to analyse ALL MDLX files)
+			if(mdlx != null && !mdlx.Invalid){
+				File.AppendAllText("custom_hd_assets.txt", "HD assets for: " + originalFile + "\n");
+				while(oldRemasteredHeaders.Count > mdlx.TextureCount){
+					File.AppendAllText("custom_hd_assets.txt", "Removing: -" + (oldRemasteredHeaders.Count-1) + ".dds\n");
+					oldRemasteredHeaders.RemoveAt(oldRemasteredHeaders.Count-1);
+				}
+				while(oldRemasteredHeaders.Count < mdlx.TextureCount){
+					var newRemasteredAssetHeader = new EgsHdAsset.RemasteredEntry()
+					{
+						CompressedLength = 0,
+						DecompressedLength = 0,
+						Name = "-" + oldRemasteredHeaders.Count + ".dds",
+						Offset = 0,
+						OriginalAssetOffset = 0
+					};
+					File.AppendAllText("custom_hd_assets.txt", "Adding: -" + oldRemasteredHeaders.Count + ".dds\n");
+					oldRemasteredHeaders.Add(newRemasteredAssetHeader);
+				}
+				File.AppendAllText("custom_hd_assets.txt", "\n");
+			}
+			
             // 0x30 is the size of this header
-            var totalRemasteredAssetHeadersSize = asset.RemasteredAssetHeaders.Count() * 0x30;
+            var totalRemasteredAssetHeadersSize = oldRemasteredHeaders.Count() * 0x30;
             // This offset is relative to the original asset data
             var offset = totalRemasteredAssetHeadersSize + 0x10 + asset.OriginalAssetHeader.DecompressedLength;
-
-            if (offset != asset.RemasteredAssetHeaders.Values.First().Offset)
+			
+            for(int i=0;i<oldRemasteredHeaders.Count;i++)
             {
-                throw new Exception("Something is wrong here!");
-            }
-
-            foreach (var remasteredAssetHeader in asset.RemasteredAssetHeaders.Values)
-            {
+				var remasteredAssetHeader = oldRemasteredHeaders[i];
                 var filename = remasteredAssetHeader.Name;
                 var assetFilePath = Path.Combine(remasteredAssetsFolder, filename);
 
                 // Use base remastered asset data
-                var assetData = asset.RemasteredAssetsCompressedData[filename];
+                var assetData = asset.RemasteredAssetsDecompressedData.ContainsKey(filename) ? asset.RemasteredAssetsDecompressedData[filename] : new byte[]{};
                 var decompressedLength = remasteredAssetHeader.DecompressedLength;
-
+				var originalAssetOffset = remasteredAssetHeader.OriginalAssetOffset;
                 if (File.Exists(assetFilePath))
                 {
                     Console.WriteLine($"Replacing remastered file: {relativePath}/{filename}");
@@ -376,20 +414,21 @@ namespace OpenKh.Egs
                     decompressedLength = assetData.Length;
                     assetData = remasteredAssetHeader.CompressedLength > -1 ? Helpers.CompressData(assetData) : assetData;
                     assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
+					if(mdlx != null && !mdlx.Invalid) originalAssetOffset = mdlx.Offsets[i];
                 }
                 else
                 {
                     Console.WriteLine($"Keeping remastered file: {relativePath}/{filename}");
-
                     // The original file have been replaced, we need to encrypt all remastered asset with the new key
                     if (!seed.SequenceEqual(asset.Seed))
                     {
-                        assetData = asset.RemasteredAssetsDecompressedData[filename];
                         assetData = remasteredAssetHeader.CompressedLength > -1 ? Helpers.CompressData(assetData) : assetData;
                         assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
-                    }
+						if(mdlx != null && !mdlx.Invalid && mdlx.TextureCount >= i) originalAssetOffset = mdlx.Offsets[i];
+                    }else{
+						assetData = asset.RemasteredAssetsCompressedData.ContainsKey(filename) ? asset.RemasteredAssetsCompressedData[filename] : new byte[]{};
+					}
                 }
-
                 var compressedLength = remasteredAssetHeader.CompressedLength > -1 ? assetData.Length : remasteredAssetHeader.CompressedLength;
 
                 var newRemasteredAssetHeader = new EgsHdAsset.RemasteredEntry()
@@ -398,7 +437,7 @@ namespace OpenKh.Egs
                     DecompressedLength = decompressedLength,
                     Name = filename,
                     Offset = offset,
-                    Unknown24 = remasteredAssetHeader.Unknown24
+                    OriginalAssetOffset = originalAssetOffset
                 };
 
                 newRemasteredHeaders.Add(newRemasteredAssetHeader);
@@ -446,4 +485,72 @@ namespace OpenKh.Egs
 
         #endregion
     }
+	
+	class MDLX{
+		public List<int> Offsets = new List<int>();
+		public int TextureCount = 0;
+		public bool Invalid = false;
+		
+		public MDLX(byte[] originalAssetData){
+			using(MemoryStream ms = new MemoryStream(originalAssetData)){
+				ms.ReadInt32();
+				int version = ms.ReadInt32();
+				if(version != 2 && version != 3 && version != 4){ //original: version != 3
+					Invalid = true;
+					return;
+				}
+				ms.Seek(0x24, SeekOrigin.Begin);
+				string tim_ = System.Text.Encoding.ASCII.GetString(ms.ReadBytes(4));
+				if(tim_ != "tim_"){
+					Invalid = true;
+					return;
+				}
+				int TIMoffset = ms.ReadInt32();
+				
+				ms.Seek(TIMoffset, SeekOrigin.Begin);
+				int pointer = ms.ReadInt32();
+				if(pointer == -1){
+					Invalid = true;
+					return;
+				}
+				
+				ms.Seek(TIMoffset + 0x0c, SeekOrigin.Begin);
+				TextureCount = ms.ReadInt32();
+
+				ms.ReadInt32();
+				ms.ReadInt32();
+				int infoOffset = ms.ReadInt32();
+				int dataOffset = ms.ReadInt32();
+				
+				int diff = 0;
+				for(int i = 0; i<TextureCount; i++){
+					int offset = TIMoffset + dataOffset + diff + (i * 0x10) + 0x20000000;
+					Offsets.Add(offset);
+					
+					int textInfoOffset = TIMoffset + infoOffset + 0x20 + 0x40 + 0x10 + (0xA0 * i);
+					ms.Seek(textInfoOffset, SeekOrigin.Begin);
+					ulong num = ms.ReadUInt64();
+					int width = (ushort)(1u << ((int)(num >> 0x1A) & 0x0F));
+					int height = (ushort)(1u << ((int)(num >> 0x1E) & 0x0F));
+					diff+=width*height;
+				}
+
+				int index = Helpers.IndexOfByteArray(originalAssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), TIMoffset);
+				
+				while(index>-1){
+					ms.Seek(index + 0x0a, SeekOrigin.Begin);
+					int imageToApplyTo = (int)ms.ReadInt16();
+					
+					ms.Seek(0x1c, SeekOrigin.Current);
+					int texaOffset = ms.ReadInt32();
+					int offset = index + texaOffset + 0x08 + (imageToApplyTo * 0x10) + 0x20000000;
+					Offsets.Add(offset);
+					
+					TextureCount++;
+					index = Helpers.IndexOfByteArray(originalAssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), index+1);
+				}
+			}
+		}
+
+	}
 }

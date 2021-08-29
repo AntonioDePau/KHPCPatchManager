@@ -1,6 +1,6 @@
 using Ionic.Zlib;
 //using McMaster.Extensions.CommandLineUtils;
-using OpenKh.Bbs;
+//using OpenKh.Bbs;
 //using OpenKh.Common;
 using OpenKh.Egs;
 //using OpenKh.Kh1;
