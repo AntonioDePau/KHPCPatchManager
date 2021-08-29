@@ -231,14 +231,15 @@ public class KHPCPatchManager{
 		}
 		Console.WriteLine("Extracting patch...");
 		if(GUI_Displayed) status.Text = $"Extracting patch: 0%";
-		string timestamp = patchFile[0] + "_" + DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss_ms");
+		string timestamp = DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss_ms");
+		string tempFolder = patchFile[0] + "_" + timestamp;
 		MyBackgroundWorker backgroundWorker1 = new MyBackgroundWorker();
 		backgroundWorker1.ProgressChanged += (s,e) => {
 			Console.WriteLine((string)e.UserState);
 			if(GUI_Displayed) status.Text = (string)e.UserState;
 		};
 		backgroundWorker1.DoWork += (s,e) => {
-			Directory.CreateDirectory(timestamp);
+			Directory.CreateDirectory(tempFolder);
 			string epicBackup = Path.Combine(epicFolder, "backup");
 			Directory.CreateDirectory(epicBackup);
 			
@@ -248,7 +249,7 @@ public class KHPCPatchManager{
 					filesExtracted = 0;
 					currentExtraction = patchFile[i];
 					zip.ExtractProgress += new EventHandler<ExtractProgressEventArgs>(ExtractionProgress);
-					zip.ExtractAll(timestamp, ExtractExistingFileAction.OverwriteSilently);
+					zip.ExtractAll(tempFolder, ExtractExistingFileAction.OverwriteSilently);
 				}
 			}		
 			
@@ -259,7 +260,7 @@ public class KHPCPatchManager{
 				backgroundWorker1.ReportProgress(0, $"Searching {khFiles[patchType][i]}...");
 				string epicFile = Path.Combine(epicFolder, khFiles[patchType][i] + ".pkg");
 				string epicHedFile = Path.Combine(epicFolder, khFiles[patchType][i] + ".hed");
-				string patchFolder = Path.Combine(timestamp, khFiles[patchType][i]);
+				string patchFolder = Path.Combine(tempFolder, khFiles[patchType][i]);
 				string epicPkgBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + (!backupPKG ? "_" + timestamp : "") + ".pkg");
 				string epicHedBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + (!backupPKG ? "_" + timestamp : "") + ".hed");
 				if(Directory.Exists(patchFolder) && File.Exists(epicFile)){
@@ -273,11 +274,13 @@ public class KHPCPatchManager{
 					OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, patchFolder, epicFolder, backgroundWorker1);
 					if(!backupPKG){
 						if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
+						File.Move(Path.Combine(epicFolder, khFiles[patchType][i] + "_" + timestamp + ".pkg"), Path.Combine(epicFolder, khFiles[patchType][i] + ".pkg"));
 						if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
+						File.Move(Path.Combine(epicFolder, khFiles[patchType][i] + "_" + timestamp + ".hed"), Path.Combine(epicFolder, khFiles[patchType][i] + ".hed"));
 					}
 				}
 			}
-			Directory.Delete(timestamp, true);
+			Directory.Delete(tempFolder, true);
 			if(!foundFolder){
 				string error = "Could not find any folder to patch!\nMake sure you are using the correct path for the \"en\" folder!";
 				Console.WriteLine(error);

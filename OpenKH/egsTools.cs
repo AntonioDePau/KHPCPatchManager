@@ -367,7 +367,6 @@ namespace OpenKh.Egs
             foreach (var remasteredAssetHeader in asset.RemasteredAssetHeaders.Values){
             	oldRemasteredHeaders.Add(remasteredAssetHeader);
             }
-			oldRemasteredHeaders = oldRemasteredHeaders.OrderBy(o=>o.Name).ToList();
 
 			//At the moment this only applies on fresh PKGs (or ones that haven't been patched with this modded MDLX before, otherwise we'd neet to analyse ALL MDLX files)
 			if(mdlx != null && !mdlx.Invalid){
