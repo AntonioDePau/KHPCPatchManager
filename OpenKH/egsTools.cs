@@ -19,8 +19,8 @@ namespace OpenKh.Egs
 
         #region MD5 names
 
-        private static readonly IEnumerable<string> KH2Names = IdxName.Names
-            .Concat(IdxName.Names.Where(x => x.Contains("anm/")).SelectMany(x => new string[]
+        private static readonly IEnumerable<string> KH2Names = EgsHdAsset.KH2Names
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.Contains("anm/")).SelectMany(x => new string[]
             {
                     x.Replace("anm/", "anm/jp/"),
                     x.Replace("anm/", "anm/us/"),
@@ -35,11 +35,11 @@ namespace OpenKh.Egs
             .Concat(Kh2.Constants.Languages.SelectMany(lang =>
                 Kh2.Constants.WorldIds.SelectMany(world =>
                     Enumerable.Range(0, 64).Select(index => Path.Combine("map", lang).Replace('\\', '/') + $"/{world}{index:D02}.bar"))))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("bgm/")).Select(x => x.Replace(".bgm", ".win32.scd")))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("se/")).Select(x => x.Replace(".seb", ".win32.scd")))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("vagstream/")).Select(x => x.Replace(".vas", ".win32.scd")))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("gumibattle/se/")).Select(x => x.Replace(".seb", ".win32.scd")))
-            .Concat(IdxName.Names.Where(x => x.StartsWith("voice/")).Select(x => x
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("bgm/")).Select(x => x.Replace(".bgm", ".win32.scd")))
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("se/")).Select(x => x.Replace(".seb", ".win32.scd")))
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("vagstream/")).Select(x => x.Replace(".vas", ".win32.scd")))
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("gumibattle/se/")).Select(x => x.Replace(".seb", ".win32.scd")))
+            .Concat(EgsHdAsset.KH2Names.Where(x => x.StartsWith("voice/")).Select(x => x
                 .Replace(".vag", ".win32.scd")
                 .Replace(".vsb", ".win32.scd")))
             .Concat(new string[]
@@ -60,6 +60,7 @@ namespace OpenKh.Egs
             .Concat(EgsHdAsset.TheaterNames)
             .Concat(EgsHdAsset.Kh1AdditionalNames)
             .Concat(EgsHdAsset.Launcher28Names)
+            .Concat(EgsHdAsset.CustomNames)
             .Concat(new string[] { "dummy.txt" })
             .Distinct()
             .ToDictionary(x => Helpers.ToString(Extensions.GetHashData(Encoding.UTF8.GetBytes(x))), x => x);
@@ -243,6 +244,10 @@ namespace OpenKh.Egs
                 DataLength = (int)(pkgStream.Position - offset),
                 Offset = offset
             };
+			
+            if (!Names.TryGetValue(Helpers.ToString(hedHeader.MD5), out var existingfilename)){
+				File.AppendAllText("resources/custom_filenames.txt", filename + "\n");
+            }
 
             BinaryMapping.WriteObject<Hed.Entry>(hedStream, hedHeader);
 

@@ -29,7 +29,6 @@ public class KHPCPatchManager{
 	static Assembly ExecutingAssembly = Assembly.GetExecutingAssembly();
 	static string[] EmbeddedLibraries = ExecutingAssembly.GetManifestResourceNames().Where(x => x.EndsWith(".dll")).ToArray();
 	static bool GUI_Displayed = false;
-	public static string HashpairPath = "resources";
 	
 	[DllImport("kernel32.dll")]
 	static extern IntPtr GetConsoleWindow();
@@ -110,17 +109,13 @@ public class KHPCPatchManager{
 		
 		if(!Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "/resources")){
 			UpdateResources();
-			/*Console.WriteLine("Please make sure you have a \"resources\" folder containing the hashpairs!");
-			Console.ReadLine();
-			return;*/
+		}
+		
+		if(!File.Exists(AppDomain.CurrentDomain.BaseDirectory + "/resources/custom_filenames.txt")){
+			File.AppendAllText(AppDomain.CurrentDomain.BaseDirectory + "/resources/custom_filenames.txt", "");
 		}
 		
 		Console.WriteLine($"KHPCPatchManager {version}");
-		
-		if(Directory.Exists(AppDomain.CurrentDomain.BaseDirectory + "/custom_hashpairs")){
-			HashpairPath = "custom_hashpairs";
-			Console.WriteLine($"\nCustom hashpairs directory detected!\nUsing hashpairs located in {HashpairPath}\\.\n");
-		}
 		
 		string hedFile = null, pkgFile = null, pkgFolder = null;
 		List<string> originFolder = new List<string>();
@@ -325,7 +320,7 @@ public class KHPCPatchManager{
 		f.Text = $"KHPCPatchManager {version}";
 		f.MinimumSize = new System.Drawing.Size(350, 300);
 		
-		status.Text = HashpairPath=="resources" ? "" : "Using \"custom_hashpairs\"!";
+		status.Text = "";
 		f.Controls.Add(status);
 		
 		Label patch = new Label();

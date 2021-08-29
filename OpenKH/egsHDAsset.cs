@@ -30,7 +30,9 @@ namespace OpenKh.Egs
             [Data] public int CompressedLength { get; set; }
         }
 
-        private static readonly string ResourcePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), KHPCPatchManager.HashpairPath);
+        private static readonly string ResourcePath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), "resources");
+        public static string[] CustomNames = File.ReadAllLines(Path.Combine(ResourcePath, "custom_filenames.txt"));
+        public static string[] KH2Names = File.ReadAllLines(Path.Combine(ResourcePath, "kh2idx.txt"));
         public static string[] DddNames = File.ReadAllLines(Path.Combine(ResourcePath, "ddd.txt"));
         public static string[] MareNames = File.ReadAllLines(Path.Combine(ResourcePath, "mare.txt"));
         public static string[] SettingMenuNames = File.ReadAllLines(Path.Combine(ResourcePath, "settingmenu.txt"));
