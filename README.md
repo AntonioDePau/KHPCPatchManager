@@ -48,3 +48,7 @@ As long as the user keeps these new entries in their "custom_filenames.txt" file
 - Xeeynamo and the whole OpenKH team: https://github.com/Xeeynamo/OpenKh
 - DemonBoy (aka: DA) for making custom HD assets for custom MDLX files possible
 - TieuLink for extensive testing and help in debugging
+
+## Financial support
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=64HEH8DC52DXQ)
