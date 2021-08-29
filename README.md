@@ -25,16 +25,13 @@ MyPatch
     │       └── P_EX100.mdlx
     └── remastered
         └── obj
-            └── P_EX100.a.us
+            └── P_EX100.mdlx
                 ├── -0.dds
                 ├── -1.dds
                 ├── -2.dds
                 ├── -3.dds
                 ├── -4.dds
-                ├── -5.dds
-                ├── -6.dds
-                ├── -7.dds
-                └── -8.dds
+                └── -5.dds
 ```
 5. Drag your "MyPatch" folder onto the exe
 6. A "MyPatch" with the game's patch extension will be created
