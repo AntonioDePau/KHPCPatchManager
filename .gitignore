@@ -3,3 +3,7 @@
 ################################################################################
 
 /patchtest
+/resources
+/custom_hd_assets.txt
+/KHPCPatchManager.exe
+/.vs/slnx.sqlite

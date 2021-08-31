@@ -315,7 +315,42 @@ namespace OpenKh.Egs
                 encryptionSeed = seed.ReadAllBytes();
                 encryptedData = header.CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, encryptionSeed) : compressedData;
             }
-			
+
+            IMD imd = null;
+            // We want to replace the original file
+            if (File.Exists(completeFilePath))
+            {
+                Console.WriteLine($"Replacing original: {filename}!");
+
+                using var newFileStream = File.OpenRead(completeFilePath);
+                decompressedData = newFileStream.ReadAllBytes();
+
+                if (filename.IndexOf(".imd") > -1) imd = new IMD(decompressedData);
+
+                if (imd != null && !imd.Invalid) header.RemasteredAssetCount = imd.TextureCount;
+
+                var compressedData = decompressedData.ToArray();
+                var compressedDataLenght = originalHeader.CompressedLength;
+
+                // CompressedLenght => -2: no compression and encryption, -1: no compression 
+                if (originalHeader.CompressedLength > -1)
+                {
+                    compressedData = Helpers.CompressData(decompressedData);
+                    compressedDataLenght = compressedData.Length;
+                }
+
+                header.CompressedLength = compressedDataLenght;
+                header.DecompressedLength = decompressedData.Length;
+                // Encrypt and write current file data in the PKG stream
+
+                // The seed used for encryption is the original data header
+                var seed = new MemoryStream();
+                BinaryMapping.WriteObject<EgsHdAsset.Header>(seed, header);
+
+                encryptionSeed = seed.ReadAllBytes();
+                encryptedData = header.CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, encryptionSeed) : compressedData;
+            }
+
             // Write original file header
             BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
 
@@ -324,7 +359,10 @@ namespace OpenKh.Egs
             // Is there remastered assets?
             if (header.RemasteredAssetCount > 0)
             {
-                remasteredHeaders = ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, mdlx);
+                if (mdlx != null)
+                    remasteredHeaders = ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, mdlx);
+                else
+                    remasteredHeaders = ReplaceRemasteredAssetsIMD(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, imd);
             }
             else
             {
@@ -463,6 +501,119 @@ namespace OpenKh.Egs
             return newRemasteredHeaders;
         }
 
+        private static List<EgsHdAsset.RemasteredEntry> ReplaceRemasteredAssetsIMD(string inputFolder, string originalFile, EgsHdAsset asset, FileStream pkgStream, byte[] seed, byte[] originalAssetData, IMD imd)
+        {
+            var newRemasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
+            var oldRemasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
+            var relativePath = Helpers.GetRelativePath(originalFile, Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME));
+            var remasteredAssetsFolder = Path.Combine(inputFolder, REMASTERED_FILES_FOLDER_NAME, relativePath);
+
+            var allRemasteredAssetsData = new MemoryStream();
+
+            foreach (var remasteredAssetHeader in asset.RemasteredAssetHeaders.Values)
+            {
+                oldRemasteredHeaders.Add(remasteredAssetHeader);
+            }
+
+            if (imd != null && !imd.Invalid)
+            {
+                File.AppendAllText("custom_hd_assets.txt", "HD assets for: " + originalFile + "\n");
+                while (oldRemasteredHeaders.Count > imd.TextureCount)
+                {
+                    File.AppendAllText("custom_hd_assets.txt", "Removing: -" + (oldRemasteredHeaders.Count - 1) + ".dds\n");
+                    oldRemasteredHeaders.RemoveAt(oldRemasteredHeaders.Count - 1);
+                }
+                while (oldRemasteredHeaders.Count < imd.TextureCount)
+                {
+                    var newRemasteredAssetHeader = new EgsHdAsset.RemasteredEntry()
+                    {
+                        CompressedLength = 0,
+                        DecompressedLength = 0,
+                        Name = "-" + oldRemasteredHeaders.Count + ".dds",
+                        Offset = 0,
+                        OriginalAssetOffset = 0
+                    };
+                    File.AppendAllText("custom_hd_assets.txt", "Adding: -" + oldRemasteredHeaders.Count + ".dds\n");
+                    oldRemasteredHeaders.Add(newRemasteredAssetHeader);
+                }
+                File.AppendAllText("custom_hd_assets.txt", "\n");
+            }
+
+            // 0x30 is the size of this header
+            var totalRemasteredAssetHeadersSize = oldRemasteredHeaders.Count() * 0x30;
+            // This offset is relative to the original asset data
+            var offset = totalRemasteredAssetHeadersSize + 0x10 + asset.OriginalAssetHeader.DecompressedLength;
+
+            for (int i = 0; i < oldRemasteredHeaders.Count; i++)
+            {
+                var remasteredAssetHeader = oldRemasteredHeaders[i];
+                var filename = remasteredAssetHeader.Name;
+                var assetFilePath = Path.Combine(remasteredAssetsFolder, filename);
+
+                // Use base remastered asset data
+                var assetData = asset.RemasteredAssetsDecompressedData.ContainsKey(filename) ? asset.RemasteredAssetsDecompressedData[filename] : new byte[] { };
+                var decompressedLength = remasteredAssetHeader.DecompressedLength;
+                var originalAssetOffset = remasteredAssetHeader.OriginalAssetOffset;
+                if (File.Exists(assetFilePath))
+                {
+                    Console.WriteLine($"Replacing remastered file: {relativePath}/{filename}");
+
+                    assetData = File.ReadAllBytes(assetFilePath);
+                    decompressedLength = assetData.Length;
+                    assetData = remasteredAssetHeader.CompressedLength > -1 ? Helpers.CompressData(assetData) : assetData;
+                    assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
+                    if (imd != null && !imd.Invalid) originalAssetOffset = imd.Offset;
+                }
+                else
+                {
+                    Console.WriteLine($"Keeping remastered file: {relativePath}/{filename}");
+                    // The original file have been replaced, we need to encrypt all remastered asset with the new key
+                    if (!seed.SequenceEqual(asset.Seed))
+                    {
+                        assetData = remasteredAssetHeader.CompressedLength > -1 ? Helpers.CompressData(assetData) : assetData;
+                        assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
+                        if (imd != null && !imd.Invalid && imd.TextureCount >= i) originalAssetOffset = imd.Offset;
+                    }
+                    else
+                    {
+                        assetData = asset.RemasteredAssetsCompressedData.ContainsKey(filename) ? asset.RemasteredAssetsCompressedData[filename] : new byte[] { };
+                    }
+                }
+                var compressedLength = remasteredAssetHeader.CompressedLength > -1 ? assetData.Length : remasteredAssetHeader.CompressedLength;
+
+                var newRemasteredAssetHeader = new EgsHdAsset.RemasteredEntry()
+                {
+                    CompressedLength = compressedLength,
+                    DecompressedLength = decompressedLength,
+                    Name = filename,
+                    Offset = offset,
+                    OriginalAssetOffset = originalAssetOffset
+                };
+
+                newRemasteredHeaders.Add(newRemasteredAssetHeader);
+
+                // Write asset header in the PKG stream
+                BinaryMapping.WriteObject<EgsHdAsset.RemasteredEntry>(pkgStream, newRemasteredAssetHeader);
+
+                // Don't write into the PKG stream yet as we need to write
+                // all HD assets header juste after original file's data
+                allRemasteredAssetsData.Write(assetData);
+
+                // Make sure to align remastered asset data on 16 bytes
+                if (assetData.Length % 0x10 != 0)
+                {
+                    allRemasteredAssetsData.Write(Enumerable.Repeat((byte)0xCD, 16 - (assetData.Length % 0x10)).ToArray());
+                }
+
+                offset += decompressedLength;
+            }
+
+            pkgStream.Write(originalAssetData);
+            pkgStream.Write(allRemasteredAssetsData.ReadAllBytes());
+
+            return newRemasteredHeaders;
+        }
+
         #endregion
 
         #region List
@@ -552,4 +703,32 @@ namespace OpenKh.Egs
 		}
 
 	}
+
+    class IMD
+    {
+        //texturecount is always 1 for IMD so we only need 1 Offset, not a list.
+        public int Offset = 0;
+        public bool Invalid = false;
+        public int TextureCount = 0;
+
+        public IMD(byte[] originalAssetData)
+        {
+            using (MemoryStream ms = new MemoryStream(originalAssetData))
+            {
+                int magic = ms.ReadInt32();
+                if (magic != 1145523529) //IMGD
+                {
+                    Invalid = true;
+                    return;
+                }
+
+                TextureCount = 1;
+                ms.ReadInt32(); //always 256
+                int IMDoffset = ms.ReadInt32(); //offset for image data
+                Offset = IMDoffset + 0x20000000;
+            }
+
+        }
+
+    }
 }
