@@ -25,16 +25,13 @@ MyPatch
     │       └── P_EX100.mdlx
     └── remastered
         └── obj
-            └── P_EX100.a.us
+            └── P_EX100.mdlx
                 ├── -0.dds
                 ├── -1.dds
                 ├── -2.dds
                 ├── -3.dds
                 ├── -4.dds
-                ├── -5.dds
-                ├── -6.dds
-                ├── -7.dds
-                └── -8.dds
+                └── -5.dds
 ```
 5. Drag your "MyPatch" folder onto the exe
 6. A "MyPatch" with the game's patch extension will be created
@@ -48,3 +45,7 @@ As long as the user keeps these new entries in their "custom_filenames.txt" file
 - Xeeynamo and the whole OpenKH team: https://github.com/Xeeynamo/OpenKh
 - DemonBoy (aka: DA) for making custom HD assets for custom MDLX files possible
 - TieuLink for extensive testing and help in debugging
+
+## Financial support
+
+[![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=64HEH8DC52DXQ)
