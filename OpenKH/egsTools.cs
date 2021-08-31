@@ -219,6 +219,10 @@ namespace OpenKh.Egs
                 compressedData = Helpers.CompressData(decompressedData);
                 header.CompressedLength = compressedData.Length;
             }
+			
+			SDasset sdasset = new SDasset(filename, decompressedData);
+			
+			if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.TextureCount;
 
             // Encrypt and write current file data in the PKG stream
             // The seed used for encryption is the original data header
@@ -231,8 +235,17 @@ namespace OpenKh.Egs
             // Write original file header
             BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
 
-            // Make sure to write the original file after remastered assets headers
-            pkgStream.Write(encryptedData);
+			if (header.RemasteredAssetCount > 0)
+			{
+				// Create an "Asset" to pass to ReplaceRemasteredAssets
+				EgsHdAsset asset = new EgsHdAsset(header, decompressedData, encryptedData, encryptionSeed);
+				ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, sdasset);
+			}
+			else
+			{
+				// Make sure to write the original file after remastered assets headers
+				pkgStream.Write(encryptedData);
+			}
 
             #endregion
 

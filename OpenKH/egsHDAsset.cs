@@ -65,6 +65,14 @@ namespace OpenKh.Egs
         public Dictionary<string, byte[]> RemasteredAssetsDecompressedData => _remasteredAssetsData;
         public Dictionary<string, byte[]> RemasteredAssetsCompressedData => _remasteredAssetsRawData;
 
+		public EgsHdAsset(Header temp_header, byte[] temp_originalData, byte[] temp_originalRawData, byte[] temp_seed){
+			_header = temp_header;
+			_originalData = temp_originalData;
+			_originalRawData = temp_originalRawData;
+			_seed = temp_seed;
+			_entries = new Dictionary<string, RemasteredEntry>();
+		}
+
         public EgsHdAsset(Stream stream)
         {
             _stream = stream;
