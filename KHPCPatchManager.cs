@@ -120,6 +120,7 @@ public class KHPCPatchManager{
 		string hedFile = null, pkgFile = null, pkgFolder = null;
 		List<string> originFolder = new List<string>();
 		List<string> patchFolders = new List<string>();
+		bool help = false;
 		try{
 			for(int i=0;i<args.Length;i++){
 				if(Path.GetExtension(args[i]) == ".hed"){
@@ -144,6 +145,8 @@ public class KHPCPatchManager{
 				}else if(Path.GetExtension(args[i]) == ".dddpcpatch"){
 					patchType.Add("DDD");
 					originFolder.Add(args[i]);
+				}else{
+					if(args[i] == "help" || args[i] == "-help" || args[i] == "--help" || args[i] == "-h" || args[i] == "--h" || args[i] == "?") help = true;
 				}
 			}
 			if(hedFile != null){
@@ -180,12 +183,14 @@ public class KHPCPatchManager{
 				}else{
 					Console.WriteLine(multiplePatchTypesSelected);
 				}
+			}else if(help){
+				Console.WriteLine("\nHow to use KHPCPatchManager in CLI:");
+				Console.WriteLine("- Feed a .hed file to unpack the associated .pkg file:\n  khpcpatchmanager <hed_file>\n");
+				Console.WriteLine("- Feed a .pkg file and its unpacked folder to patch it:\n  khpcpatchmanager <pkg_file> <unpacked_pkg_folder>\n");
+				Console.WriteLine("- Feed a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch or a dddpcpatch:\n  khpcpatchmanager <unpacked_pkg_folder>\n");
+				Console.WriteLine("- Feed a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch or a dddpcpatch to patch your .pkgs:\n  khpcpatchmanager <.[kh1/com/kh2/bbs/ddd]pcpatch file>\n");
 			}else{
 				InitUI();
-				Console.WriteLine("- Drop a .hed file to unpack the associated .pkg file");
-				Console.WriteLine("- Drop a .pkg file and its unpacked folder to patch it");
-				Console.WriteLine("- Drop a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch or a dddpcpatch");
-				Console.WriteLine("- Drop a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch or a dddpcpatch to patch your .pkgs");
 			}
 		}catch(Exception e){
 			Console.WriteLine($"Error: {e}");
