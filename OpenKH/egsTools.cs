@@ -219,6 +219,10 @@ namespace OpenKh.Egs
                 compressedData = Helpers.CompressData(decompressedData);
                 header.CompressedLength = compressedData.Length;
             }
+			
+			SDasset sdasset = new SDasset(filename, decompressedData);
+			
+			if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.TextureCount;
 
             // Encrypt and write current file data in the PKG stream
             // The seed used for encryption is the original data header
@@ -231,8 +235,17 @@ namespace OpenKh.Egs
             // Write original file header
             BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
 
-            // Make sure to write the original file after remastered assets headers
-            pkgStream.Write(encryptedData);
+			if (header.RemasteredAssetCount > 0)
+			{
+				// Create an "Asset" to pass to ReplaceRemasteredAssets
+				EgsHdAsset asset = new EgsHdAsset(header, decompressedData, encryptedData, encryptionSeed);
+				ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, sdasset);
+			}
+			else
+			{
+				// Make sure to write the original file after remastered assets headers
+				pkgStream.Write(encryptedData);
+			}
 
             #endregion
 
@@ -281,7 +294,7 @@ namespace OpenKh.Egs
             var encryptedData = asset.OriginalRawData;
             var encryptionSeed = asset.Seed;
 
-			MDLX mdlx = null;
+			SDasset sdasset = null;
             // We want to replace the original file
             if (File.Exists(completeFilePath))
             {
@@ -290,9 +303,9 @@ namespace OpenKh.Egs
                 using var newFileStream = File.OpenRead(completeFilePath);
                 decompressedData = newFileStream.ReadAllBytes();
 				
-				if(filename.IndexOf(".mdlx") > -1) mdlx = new MDLX(decompressedData);
+				sdasset = new SDasset(filename, decompressedData);
 				
-				if(mdlx != null && !mdlx.Invalid) header.RemasteredAssetCount = mdlx.TextureCount;
+				if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.TextureCount;
 
                 var compressedData = decompressedData.ToArray();
                 var compressedDataLenght = originalHeader.CompressedLength;
@@ -324,7 +337,7 @@ namespace OpenKh.Egs
             // Is there remastered assets?
             if (header.RemasteredAssetCount > 0)
             {
-                remasteredHeaders = ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, mdlx);
+                remasteredHeaders = ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, sdasset);
             }
             else
             {
@@ -355,7 +368,7 @@ namespace OpenKh.Egs
             return hedHeader;
         }
 
-        private static List<EgsHdAsset.RemasteredEntry> ReplaceRemasteredAssets(string inputFolder, string originalFile, EgsHdAsset asset, FileStream pkgStream, byte[] seed, byte[] originalAssetData, MDLX mdlx)
+        private static List<EgsHdAsset.RemasteredEntry> ReplaceRemasteredAssets(string inputFolder, string originalFile, EgsHdAsset asset, FileStream pkgStream, byte[] seed, byte[] originalAssetData, SDasset sdasset)
         {
             var newRemasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
             var oldRemasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
@@ -369,13 +382,13 @@ namespace OpenKh.Egs
             }
 
 			//At the moment this only applies on fresh PKGs (or ones that haven't been patched with this modded MDLX before, otherwise we'd neet to analyse ALL MDLX files)
-			if(mdlx != null && !mdlx.Invalid){
+			if(sdasset != null && !sdasset.Invalid){
 				File.AppendAllText("custom_hd_assets.txt", "HD assets for: " + originalFile + "\n");
-				while(oldRemasteredHeaders.Count > mdlx.TextureCount){
+				while(oldRemasteredHeaders.Count > sdasset.TextureCount){
 					File.AppendAllText("custom_hd_assets.txt", "Removing: -" + (oldRemasteredHeaders.Count-1) + ".dds\n");
 					oldRemasteredHeaders.RemoveAt(oldRemasteredHeaders.Count-1);
 				}
-				while(oldRemasteredHeaders.Count < mdlx.TextureCount){
+				while(oldRemasteredHeaders.Count < sdasset.TextureCount){
 					var newRemasteredAssetHeader = new EgsHdAsset.RemasteredEntry()
 					{
 						CompressedLength = 0,
@@ -413,7 +426,7 @@ namespace OpenKh.Egs
                     decompressedLength = assetData.Length;
                     assetData = remasteredAssetHeader.CompressedLength > -1 ? Helpers.CompressData(assetData) : assetData;
                     assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
-					if(mdlx != null && !mdlx.Invalid) originalAssetOffset = mdlx.Offsets[i];
+					if(sdasset != null && !sdasset.Invalid) originalAssetOffset = sdasset.Offsets[i];
                 }
                 else
                 {
@@ -423,7 +436,7 @@ namespace OpenKh.Egs
                     {
                         assetData = remasteredAssetHeader.CompressedLength > -1 ? Helpers.CompressData(assetData) : assetData;
                         assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
-						if(mdlx != null && !mdlx.Invalid && mdlx.TextureCount >= i) originalAssetOffset = mdlx.Offsets[i];
+						if(sdasset != null && !sdasset.Invalid && sdasset.TextureCount >= i) originalAssetOffset = sdasset.Offsets[i];
                     }else{
 						assetData = asset.RemasteredAssetsCompressedData.ContainsKey(filename) ? asset.RemasteredAssetsCompressedData[filename] : new byte[]{};
 					}
@@ -484,6 +497,50 @@ namespace OpenKh.Egs
 
         #endregion
     }
+	
+	class SDasset{
+		public List<int> Offsets = new List<int>();
+		public int TextureCount = 0;
+		public bool Invalid = false;
+		
+		public SDasset(string name, byte[] originalAssetData){
+			dynamic asset = null;
+			switch(Path.GetExtension(name)){
+				case ".imd":
+					asset = new IMD(originalAssetData);
+					break;
+				case ".mdlx":
+					asset = new MDLX(originalAssetData);
+					break;
+			}
+			if(asset != null && !asset.Invalid){
+				Offsets = asset.Offsets;
+				TextureCount = asset.TextureCount;
+				Invalid = false;
+			}
+		}
+	}
+	
+	class IMD{
+		public List<int> Offsets = new List<int>();
+		public int TextureCount = 0;
+		public bool Invalid = false;
+		
+		public IMD(byte[] originalAssetData){
+            using (MemoryStream ms = new MemoryStream(originalAssetData)){
+                int magic = ms.ReadInt32();
+                if (magic != 1145523529){ //IMGD
+                    Invalid = true;
+                    return;
+                }
+
+                TextureCount = 1;
+                ms.ReadInt32(); //always 256
+                int IMDoffset = ms.ReadInt32(); //offset for image data
+                Offsets.Add(IMDoffset + 0x20000000);
+            }
+        }
+	}
 	
 	class MDLX{
 		public List<int> Offsets = new List<int>();
