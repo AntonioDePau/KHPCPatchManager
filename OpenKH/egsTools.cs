@@ -201,6 +201,11 @@ namespace OpenKh.Egs
             #region Data
 
             using var newFileStream = File.OpenRead(completeFilePath);
+			
+			bool RemasterExist = false;
+            string RemasteredPath = completeFilePath.Replace("\\original\\", "\\remastered\\");
+            if (Directory.Exists(RemasteredPath))
+                RemasterExist = true;
 
             var header = new EgsHdAsset.Header()
             {
@@ -212,6 +217,16 @@ namespace OpenKh.Egs
             };
 
             var decompressedData = newFileStream.ReadAllBytes();
+			// Make sure to align asset data on 16 bytes
+			if (decompressedData.Length % 0x10 != 0)
+			{
+				int diff = 16 - (decompressedData.Length % 0x10);
+				byte[] paddedData = new byte[decompressedData.Length + diff];
+				decompressedData.CopyTo(paddedData, 0);
+				Enumerable.Repeat((byte)0xCD, diff).ToArray().CopyTo(paddedData, decompressedData.Length);
+				decompressedData = paddedData;
+			}
+			
             var compressedData = decompressedData.ToArray();
 
             if (shouldCompressData)
@@ -220,7 +235,8 @@ namespace OpenKh.Egs
                 header.CompressedLength = compressedData.Length;
             }
 			
-			SDasset sdasset = new SDasset(filename, decompressedData);
+			SDasset sdasset = new SDasset(filename, decompressedData, RemasterExist);
+			RemasterExist = false;
 			
 			if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.TextureCount;
 
@@ -298,12 +314,29 @@ namespace OpenKh.Egs
             // We want to replace the original file
             if (File.Exists(completeFilePath))
             {
+				bool RemasterExist = false;
+				
                 Console.WriteLine($"Replacing original: {filename}!");
+				string RemasteredPath = completeFilePath.Replace("\\original\\","\\remastered\\");
+                if (Directory.Exists(RemasteredPath))
+                {
+                    Console.WriteLine($"Remastered Folder Exists! Path: {RemasteredPath}");
+                    RemasterExist = true;
+                }
 
                 using var newFileStream = File.OpenRead(completeFilePath);
                 decompressedData = newFileStream.ReadAllBytes();
+				// Make sure to align asset data on 16 bytes
+				if (decompressedData.Length % 0x10 != 0)
+				{
+					int diff = 16 - (decompressedData.Length % 0x10);
+					byte[] paddedData = new byte[decompressedData.Length + diff];
+					decompressedData.CopyTo(paddedData, 0);
+					Enumerable.Repeat((byte)0xCD, diff).ToArray().CopyTo(paddedData, decompressedData.Length);
+					decompressedData = paddedData;
+				}
 				
-				sdasset = new SDasset(filename, decompressedData);
+				sdasset = new SDasset(filename, decompressedData, RemasterExist);
 				
 				if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.TextureCount;
 
@@ -408,11 +441,67 @@ namespace OpenKh.Egs
             // This offset is relative to the original asset data
             var offset = totalRemasteredAssetHeadersSize + 0x10 + asset.OriginalAssetHeader.DecompressedLength;
 			
+			List<string> remasteredNames = new List<string>();
+
+
+            if (asset.RemasteredAssetHeaders.Values.Count == 0 || offset != asset.RemasteredAssetHeaders.Values.First().Offset) remasteredNames.Clear();
+            //grab list of full file paths from current remasteredAssetsFolder path and add them to a list.
+            //we use this list later to correctly add the file names to the PKG.
+            if (Directory.Exists(remasteredAssetsFolder) && Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories).Length > 0) //only do this if there are actually file in it.
+            {
+                remasteredNames.AddRange(Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories).ToList());
+                for (int l = 0; l < remasteredNames.Count; l++) //fix names
+                {
+                    remasteredNames[l] = remasteredNames[l].Replace(remasteredAssetsFolder, "").Replace(@"\", "/");
+                }
+
+                if (remasteredNames.Contains("/-10.dds") || remasteredNames.Contains("/-10.png"))
+                {
+                    //Make a sorted list tempremasteredNames
+                    List<string> tempremasteredNamesD = new List<string>();
+                    List<string> tempremasteredNamesP = new List<string>();
+                    for (int i = 0; i < remasteredNames.Count; i++)
+                    {
+                        var filename = "/-"  + i.ToString();
+                        Console.WriteLine("TEST for " + filename + ".dds/.png");
+                        if (remasteredNames.Contains(filename + ".dds"))
+                        {
+                            Console.WriteLine(filename + ".dds" + "FOUND!");
+                            tempremasteredNamesD.Add(filename + ".dds");
+                            remasteredNames.Remove(filename + ".dds");
+                        }
+                        else if (remasteredNames.Contains(filename + ".png"))
+                        {
+                            Console.WriteLine(filename + ".png" + "FOUND!");
+                            tempremasteredNamesP.Add(filename + ".png");
+                            remasteredNames.Remove(filename + ".png");
+                        }
+                    }
+                    //Add the image files at the end
+                    //DDS list first, PNG list 2nd, everything else after
+                    tempremasteredNamesD.AddRange(tempremasteredNamesP);
+                    tempremasteredNamesD.AddRange(remasteredNames);
+                    //Add the sorted list back to remasteredNames
+                    remasteredNames = tempremasteredNamesD;
+                }
+			}
+			
             for(int i=0;i<oldRemasteredHeaders.Count;i++)
             {
 				var remasteredAssetHeader = oldRemasteredHeaders[i];
                 var filename = remasteredAssetHeader.Name;
                 var assetFilePath = Path.Combine(remasteredAssetsFolder, filename);
+
+				//get actual file names ONLY if the remastered asset count is greater than 0 and ONLY if the number of files in the 
+                //remastered folder for the SD asset is equal to or greater than what the total count is from what was gotten in SDasset.
+                //if those criteria aren't met then do the old method.
+                if (remasteredNames.Count >= oldRemasteredHeaders.Count && remasteredNames.Count > 0)
+                {
+                    //filename = remasteredNames[i].Replace((remasteredAssetsFolder), "").Remove(0, 1);
+                    filename = remasteredNames[i].Remove(0, 1);
+                    assetFilePath = Path.Combine(remasteredAssetsFolder, filename);
+                }
+
 
                 // Use base remastered asset data
                 var assetData = asset.RemasteredAssetsDecompressedData.ContainsKey(filename) ? asset.RemasteredAssetsDecompressedData[filename] : new byte[]{};
