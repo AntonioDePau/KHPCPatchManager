@@ -770,59 +770,17 @@ namespace OpenKh.Egs
         public int AssetCount = 0;
         public bool Invalid = false;
 
-        public PAX(byte[] originalAssetData)
+        public PAX(byte[] originalAssetData, int origOffset = 0)
         {
             using MemoryStream ms = new MemoryStream(originalAssetData);
 
             var magic = ms.ReadInt32();
-            if (magic != 1599619408) //PAX_
+            if (origOffset > 0 && magic != 1599619408) //PAX_
             {
                 Invalid = true;
                 return;
             }
 
-            ms.ReadInt64(); //we just skip these 8 bytes. unsure what they are for.
-
-            var Dpxoffset = ms.ReadInt32();
-            ms.Seek(Dpxoffset + 0xC, SeekOrigin.Begin);
-
-            var Unk1Count = ms.ReadInt32(); //unsure what this block of data is for. we seem to not need it though.
-            ms.Seek(Unk1Count * 0x20, SeekOrigin.Current); //so skip it to get to the part we actually need.
-
-            var DpdCount = ms.ReadInt32();
-            var DpdOffsets = ((int)ms.Position); //the DPDs are what have our textures so save the position of this area.
-
-            for (int d = 0; d < DpdCount; d++)
-            {
-                ms.Seek(DpdOffsets + (d * 0x4), SeekOrigin.Begin);
-
-                var DpdOffset = ms.ReadInt32();
-                ms.Seek(Dpxoffset + DpdOffset, SeekOrigin.Begin);
-
-                ms.ReadInt32(); //unknown
-
-                var Unk2Count = ms.ReadInt32(); //don't know this block of data, so skip it to get to what me need
-                ms.Seek(Unk2Count * 0x4, SeekOrigin.Current);
-
-                var DpdTexCount = ms.ReadInt32(); //finally found the texture offsets
-                var DpdTexOffsets = ((int)ms.Position); //save this position
-
-                for (int t = 0; t < DpdTexCount; t++)
-                {
-                    TextureCount += 1;
-					AssetCount++;
-                    ms.Seek(DpdTexOffsets + (t * 0x4), SeekOrigin.Begin);
-                    var DpdTexOffset = ms.ReadInt32();
-                    Offsets.Add(Dpxoffset + DpdOffset + (DpdTexOffset + 0x20) + 0x20000000);
-                }
-            }
-        }
-
-        public PAX(byte[] subAssetData, int origOffset)
-        {
-            using MemoryStream ms = new MemoryStream(subAssetData);
-
-            ms.ReadInt32(); //magic. already confirmed in main asset
             ms.ReadInt64(); //we just skip these 8 bytes. unsure what they are for.
 
             var Dpxoffset = ms.ReadInt32();
