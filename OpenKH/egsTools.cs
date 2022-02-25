@@ -238,7 +238,7 @@ namespace OpenKh.Egs
 			SDasset sdasset = new SDasset(filename, decompressedData, RemasterExist);
 			RemasterExist = false;
 			
-			if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.TextureCount;
+			if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.AssetCount;
 
             // Encrypt and write current file data in the PKG stream
             // The seed used for encryption is the original data header
@@ -338,7 +338,7 @@ namespace OpenKh.Egs
 				
 				sdasset = new SDasset(filename, decompressedData, RemasterExist);
 				
-				if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.TextureCount;
+				if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.AssetCount;
 
                 var compressedData = decompressedData.ToArray();
                 var compressedDataLenght = originalHeader.CompressedLength;
@@ -417,11 +417,11 @@ namespace OpenKh.Egs
 			//At the moment this only applies on fresh PKGs (or ones that haven't been patched with this modded MDLX before, otherwise we'd neet to analyse ALL MDLX files)
 			if(sdasset != null && !sdasset.Invalid){
 				File.AppendAllText("custom_hd_assets.txt", "HD assets for: " + originalFile + "\n");
-				while(oldRemasteredHeaders.Count > sdasset.TextureCount){
+				while(oldRemasteredHeaders.Count > sdasset.AssetCount){
 					File.AppendAllText("custom_hd_assets.txt", "Removing: -" + (oldRemasteredHeaders.Count-1) + ".dds\n");
 					oldRemasteredHeaders.RemoveAt(oldRemasteredHeaders.Count-1);
 				}
-				while(oldRemasteredHeaders.Count < sdasset.TextureCount){
+				while(oldRemasteredHeaders.Count < sdasset.AssetCount){
 					var newRemasteredAssetHeader = new EgsHdAsset.RemasteredEntry()
 					{
 						CompressedLength = 0,
@@ -442,66 +442,67 @@ namespace OpenKh.Egs
             var offset = totalRemasteredAssetHeadersSize + 0x10 + asset.OriginalAssetHeader.DecompressedLength;
 			
 			List<string> remasteredNames = new List<string>();
-
+			
+			//if (sdasset != null && !sdasset.Invalid && sdasset.NamesAudio != null && sdasset.NamesAudio.Count > 0) remasteredNames.AddRange(sdasset.NamesAudio);
 
             if (asset.RemasteredAssetHeaders.Values.Count == 0 || offset != asset.RemasteredAssetHeaders.Values.First().Offset) remasteredNames.Clear();
             //grab list of full file paths from current remasteredAssetsFolder path and add them to a list.
             //we use this list later to correctly add the file names to the PKG.
             if (Directory.Exists(remasteredAssetsFolder) && Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories).Length > 0) //only do this if there are actually file in it.
             {
-                remasteredNames.AddRange(Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories).ToList());
+				string[] foundFiles = Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories);
+                
+				for (int l = 0; l < foundFiles.Length; l++){
+					if (remasteredNames.IndexOf(foundFiles[l]) == -1) remasteredNames.Add(foundFiles[l]);
+				}
+				
                 for (int l = 0; l < remasteredNames.Count; l++) //fix names
                 {
                     remasteredNames[l] = remasteredNames[l].Replace(remasteredAssetsFolder, "").Replace(@"\", "/");
                 }
 
-                if (remasteredNames.Contains("/-10.dds") || remasteredNames.Contains("/-10.png"))
-                {
-                    //Make a sorted list tempremasteredNames
-                    List<string> tempremasteredNamesD = new List<string>();
-                    List<string> tempremasteredNamesP = new List<string>();
-                    for (int i = 0; i < remasteredNames.Count; i++)
-                    {
-                        var filename = "/-"  + i.ToString();
-                        Console.WriteLine("TEST for " + filename + ".dds/.png");
-                        if (remasteredNames.Contains(filename + ".dds"))
-                        {
-                            Console.WriteLine(filename + ".dds" + "FOUND!");
-                            tempremasteredNamesD.Add(filename + ".dds");
-                            remasteredNames.Remove(filename + ".dds");
-                        }
-                        else if (remasteredNames.Contains(filename + ".png"))
-                        {
-                            Console.WriteLine(filename + ".png" + "FOUND!");
-                            tempremasteredNamesP.Add(filename + ".png");
-                            remasteredNames.Remove(filename + ".png");
-                        }
-                    }
-                    //Add the image files at the end
-                    //DDS list first, PNG list 2nd, everything else after
-                    tempremasteredNamesD.AddRange(tempremasteredNamesP);
-                    tempremasteredNamesD.AddRange(remasteredNames);
-                    //Add the sorted list back to remasteredNames
-                    remasteredNames = tempremasteredNamesD;
-                }
+				//Make a sorted list tempremasteredNames
+				List<string> tempremasteredNamesD = new List<string>();
+				List<string> tempremasteredNamesP = new List<string>();
+				for (int i = 0; i < remasteredNames.Count; i++)
+				{
+					var filename = "/-"  + i.ToString();
+					Console.WriteLine("TEST for " + filename + ".dds/.png");
+					if (remasteredNames.Contains(filename + ".dds"))
+					{
+						Console.WriteLine(filename + ".dds" + "FOUND!");
+						tempremasteredNamesD.Add(filename + ".dds");
+						remasteredNames.Remove(filename + ".dds");
+					}
+					else if (remasteredNames.Contains(filename + ".png"))
+					{
+						Console.WriteLine(filename + ".png" + "FOUND!");
+						tempremasteredNamesP.Add(filename + ".png");
+						remasteredNames.Remove(filename + ".png");
+					}
+				}
+				//Add the image files at the end
+				//DDS list first, PNG list 2nd, everything else after
+				tempremasteredNamesD.AddRange(tempremasteredNamesP);
+				tempremasteredNamesD.AddRange(remasteredNames);
+				//Add the sorted list back to remasteredNames
+				remasteredNames = tempremasteredNamesD;
 			}
 			
             for(int i=0;i<oldRemasteredHeaders.Count;i++)
             {
 				var remasteredAssetHeader = oldRemasteredHeaders[i];
                 var filename = remasteredAssetHeader.Name;
-                var assetFilePath = Path.Combine(remasteredAssetsFolder, filename);
 
 				//get actual file names ONLY if the remastered asset count is greater than 0 and ONLY if the number of files in the 
                 //remastered folder for the SD asset is equal to or greater than what the total count is from what was gotten in SDasset.
                 //if those criteria aren't met then do the old method.
                 if (remasteredNames.Count >= oldRemasteredHeaders.Count && remasteredNames.Count > 0)
                 {
-                    //filename = remasteredNames[i].Replace((remasteredAssetsFolder), "").Remove(0, 1);
                     filename = remasteredNames[i].Remove(0, 1);
-                    assetFilePath = Path.Combine(remasteredAssetsFolder, filename);
                 }
-
+				
+                var assetFilePath = Path.Combine(remasteredAssetsFolder, filename);
 
                 // Use base remastered asset data
                 var assetData = asset.RemasteredAssetsDecompressedData.ContainsKey(filename) ? asset.RemasteredAssetsDecompressedData[filename] : new byte[]{};
@@ -525,7 +526,7 @@ namespace OpenKh.Egs
                     {
                         assetData = remasteredAssetHeader.CompressedLength > -1 ? Helpers.CompressData(assetData) : assetData;
                         assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
-						if(sdasset != null && !sdasset.Invalid && sdasset.TextureCount >= i) originalAssetOffset = sdasset.Offsets[i];
+						if(sdasset != null && !sdasset.Invalid && sdasset.AssetCount >= i) originalAssetOffset = sdasset.Offsets[i];
                     }else{
 						assetData = asset.RemasteredAssetsCompressedData.ContainsKey(filename) ? asset.RemasteredAssetsCompressedData[filename] : new byte[]{};
 					}
@@ -590,7 +591,9 @@ namespace OpenKh.Egs
 	class SDasset
     {
         public List<int> Offsets = new List<int>();
-        public int TextureCount = 0;
+		public List<string> NamesAudio = new List<string>();
+		public int AssetCount = 0;
+		public int TextureCount = 0;
         public bool Invalid = true;
 
         public SDasset(string name, byte[] originalAssetData, bool remasterpathtrue)
@@ -641,6 +644,8 @@ namespace OpenKh.Egs
             {
                 Offsets = asset.Offsets;
                 TextureCount = asset.TextureCount;
+                AssetCount = asset.AssetCount;
+				NamesAudio = asset.NamesAudio;
                 Invalid = false;
             }
         }
@@ -649,7 +654,9 @@ namespace OpenKh.Egs
     class IMD
     {
         public List<int> Offsets = new List<int>();
+		public List<string> NamesAudio = new List<string>();
         public int TextureCount = 0;
+        public int AssetCount = 0;
         public bool Invalid = false;
 
         public IMD(byte[] originalAssetData)
@@ -664,6 +671,7 @@ namespace OpenKh.Egs
             }
 
             TextureCount += 1; //IMDs are always single images
+			AssetCount++;
             ms.ReadInt32(); //always 256
             int IMDoffset = ms.ReadInt32(); //offset for image data
             Offsets.Add(IMDoffset + 0x20000000);
@@ -677,6 +685,7 @@ namespace OpenKh.Egs
             ms.ReadInt32(); //magic
 
             TextureCount += 1; //IMDs are always single images
+			AssetCount++;
             ms.ReadInt32(); //always 256(?)
             int IMDoffset = ms.ReadInt32(); //offset for image data
             Offsets.Add(origoffset + IMDoffset + 0x20000000);
@@ -687,7 +696,9 @@ namespace OpenKh.Egs
     class IMZ
     {
         public List<int> Offsets = new List<int>();
+		public List<string> NamesAudio = new List<string>();
         public int TextureCount = 0;
+        public int AssetCount = 0;
         public bool Invalid = false;
 
         public IMZ(byte[] originalAssetData)
@@ -704,6 +715,7 @@ namespace OpenKh.Egs
             ms.ReadInt64();
 
             TextureCount += ms.ReadInt32();
+			AssetCount = TextureCount;
             for (int i = 0; i < TextureCount; i++)
             {
                 ms.Seek(0x10 + (i * 0x8), SeekOrigin.Begin);
@@ -732,6 +744,7 @@ namespace OpenKh.Egs
             ms.ReadInt64(); //unknown
 
             TextureCount += ms.ReadInt32();
+			AssetCount = TextureCount;
             for (int i = 0; i < TextureCount; i++) 
             {
                 ms.Seek(0x10 + (i * 0x8), SeekOrigin.Begin);
@@ -752,7 +765,9 @@ namespace OpenKh.Egs
     class PAX
     {
         public List<int> Offsets = new List<int>();
+		public List<string> NamesAudio = new List<string>();
         public int TextureCount = 0;
+        public int AssetCount = 0;
         public bool Invalid = false;
 
         public PAX(byte[] originalAssetData)
@@ -795,6 +810,7 @@ namespace OpenKh.Egs
                 for (int t = 0; t < DpdTexCount; t++)
                 {
                     TextureCount += 1;
+					AssetCount++;
                     ms.Seek(DpdTexOffsets + (t * 0x4), SeekOrigin.Begin);
                     var DpdTexOffset = ms.ReadInt32();
                     Offsets.Add(Dpxoffset + DpdOffset + (DpdTexOffset + 0x20) + 0x20000000);
@@ -836,6 +852,7 @@ namespace OpenKh.Egs
                 for (int t = 0; t < DpdTexCount; t++)
                 {
                     TextureCount += 1;
+					AssetCount++;
                     ms.Seek(DpdTexOffsets + (t * 0x4), SeekOrigin.Begin);
                     var DpdTexOffset = ms.ReadInt32();
                     Offsets.Add(origOffset + Dpxoffset + DpdOffset + (DpdTexOffset + 0x20) + 0x20000000);
@@ -851,7 +868,9 @@ namespace OpenKh.Egs
         public List<int> OffsetsPAX = new List<int>();
         public List<int> OffsetsTM2 = new List<int>();
         public List<int> OffsetsAudio = new List<int>();
+		public List<string> NamesAudio = new List<string>();
         public int TextureCount = 0;
+        public int AssetCount = 0;
         public bool Invalid = false;
 
         public BAR(byte[] originalAssetData)
@@ -899,6 +918,7 @@ namespace OpenKh.Egs
                             subasset = new RAW(subfile, offset);
 
                             TextureCount += subasset.TextureCount;
+							AssetCount += subasset.TextureCount;
                             OffsetsTIM.AddRange(subasset.Offsets);
                         }
                         break;
@@ -912,6 +932,7 @@ namespace OpenKh.Egs
                             subasset = new TM2(subfile, offset);
 
                             TextureCount += subasset.TextureCount;
+							AssetCount += subasset.TextureCount;
                             OffsetsTM2.AddRange(subasset.Offsets);
                         }
                         break;
@@ -925,6 +946,7 @@ namespace OpenKh.Egs
                             subasset = new PAX(subfile, offset);
 
                             TextureCount += subasset.TextureCount;
+							AssetCount += subasset.TextureCount;
                             OffsetsPAX.AddRange(subasset.Offsets);
                         }
                         break;
@@ -938,6 +960,7 @@ namespace OpenKh.Egs
                             subasset = new IMD(subfile, offset);
 
                             TextureCount += subasset.TextureCount;
+							AssetCount += subasset.TextureCount;
                             Offsets.AddRange(subasset.Offsets);
                         }
                         break;
@@ -951,6 +974,7 @@ namespace OpenKh.Egs
                             subasset = new IMZ(subfile, offset);
 
                             TextureCount += subasset.TextureCount;
+							AssetCount += subasset.TextureCount;
                             Offsets.AddRange(subasset.Offsets);
                         }
                         break;
@@ -960,8 +984,11 @@ namespace OpenKh.Egs
                         if (magic == "ORIGIN")
                         {
                             //Console.WriteLine("Audio file!");
+							ms.ReadBytes(10);
+							string name = System.Text.Encoding.ASCII.GetString(ms.ReadBytes(32)).TrimEnd('\0');
+							NamesAudio.Add(name);
 
-                            TextureCount += 1;
+                            AssetCount += 1;
                             OffsetsAudio.Add(-1);
                         }
                         break;
@@ -971,7 +998,8 @@ namespace OpenKh.Egs
                             //Console.WriteLine("Bitmap image!);
 
                             TextureCount += 1;
-                            OffsetsAudio.Add(offset + 0x20000000);
+							AssetCount++;
+                            Offsets.Add(offset + 0x20000000);
                         }
                         break;
                     case (46): //BAR
@@ -983,7 +1011,7 @@ namespace OpenKh.Egs
                             subfile = ms.ReadBytes(subsize);
                             subasset = new BAR(subfile, offset);
 
-                            TextureCount += subasset.TextureCount;
+                            AssetCount += subasset.AssetCount;
                             Offsets.AddRange(subasset.Offsets);
                         }
                         break;
@@ -1041,6 +1069,7 @@ namespace OpenKh.Egs
                             subasset = new IMD(subfile, offset);
 
                             TextureCount += subasset.TextureCount;
+							AssetCount += subasset.TextureCount;
                             Offsets.AddRange(subasset.Offsets);
                         }
                         break;
@@ -1054,6 +1083,7 @@ namespace OpenKh.Egs
                             subasset = new IMZ(subfile, offset);
 
                             TextureCount += subasset.TextureCount;
+							AssetCount += subasset.TextureCount;
                             Offsets.AddRange(subasset.Offsets);
                         }
                         break;
@@ -1066,7 +1096,9 @@ namespace OpenKh.Egs
     class RAW
     {
         public List<int> Offsets = new List<int>();
+		public List<string> NamesAudio = new List<string>();
         public int TextureCount = 0;
+        public int AssetCount = 0;
         public bool Invalid = false;
 
         //i don't think RAW textures can ever be single files, but added just in case
@@ -1083,6 +1115,7 @@ namespace OpenKh.Egs
 
             ms.Seek(0x0c, SeekOrigin.Begin);
             TextureCount += ms.ReadInt32();
+			AssetCount = TextureCount;
 
             ms.ReadInt32();
             ms.ReadInt32();
@@ -1116,6 +1149,7 @@ namespace OpenKh.Egs
                 Offsets.Add(offset);
 
                 TextureCount++;
+				AssetCount++;
                 index = Helpers.IndexOfByteArray(originalAssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), index + 1);
             }
 
@@ -1127,6 +1161,7 @@ namespace OpenKh.Egs
 
             ms.Seek(0x0c, SeekOrigin.Begin);
             TextureCount += ms.ReadInt32();
+			AssetCount = TextureCount;
 
             ms.ReadInt32();
             ms.ReadInt32();
@@ -1160,6 +1195,7 @@ namespace OpenKh.Egs
                 Offsets.Add(origOffset + offset);
 
                 TextureCount++;
+				AssetCount++;
                 index = Helpers.IndexOfByteArray(subAssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), index + 1);
             }
         }
@@ -1168,7 +1204,9 @@ namespace OpenKh.Egs
     class TM2
     {
         public List<int> Offsets = new List<int>();
+		public List<string> NamesAudio = new List<string>();
         public int TextureCount = 0;
+        public int AssetCount = 0;
         public bool Invalid = false;
 
         public TM2(byte[] originalAssetData)
@@ -1205,6 +1243,7 @@ namespace OpenKh.Egs
                 int imageOffset = ((int)ms.Position);
 
                 TextureCount += 1;
+				AssetCount++;
                 Offsets.Add(0x10 + imageOffset + 0x20000000);
             }
         }
@@ -1237,6 +1276,7 @@ namespace OpenKh.Egs
                 int imageOffset = ((int)ms.Position);
 
                 TextureCount += 1;
+				AssetCount++;
                 Offsets.Add(origOffset + 0x10 + imageOffset + 0x20000000);
             }
         }
