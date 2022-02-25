@@ -765,6 +765,7 @@ namespace OpenKh.Egs
     class PAX
     {
         public List<int> Offsets = new List<int>();
+		public SortedDictionary<int, int> TempOffsets = new SortedDictionary<int, int>();
 		public List<string> NamesAudio = new List<string>();
         public int TextureCount = 0;
         public int AssetCount = 0;
@@ -809,12 +810,24 @@ namespace OpenKh.Egs
 
                 for (int t = 0; t < DpdTexCount; t++)
                 {
-                    TextureCount += 1;
-					AssetCount++;
                     ms.Seek(DpdTexOffsets + (t * 0x4), SeekOrigin.Begin);
                     var DpdTexOffset = ms.ReadInt32();
-                    Offsets.Add(origOffset + Dpxoffset + DpdOffset + (DpdTexOffset + 0x20) + 0x20000000);
+
+					ms.Seek(Dpxoffset + DpdOffset + DpdTexOffset, SeekOrigin.Begin);
+                    int value1 = ms.ReadInt32();
+                    ms.ReadInt32();
+                    int value2 = ms.ReadInt32();
+
+                    if (value2 == 0)
+                    {
+                        int finaloffset = origOffset + Dpxoffset + DpdOffset + (DpdTexOffset + 0x20) + 0x20000000;
+                        TempOffsets.Add(value1, finaloffset);
+                        TextureCount++;
+						AssetCount++;
+                    }
                 }
+                Offsets.AddRange(TempOffsets.Values);
+                TempOffsets.Clear();
             }
         }
     }
