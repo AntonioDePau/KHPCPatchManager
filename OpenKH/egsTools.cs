@@ -821,7 +821,7 @@ namespace OpenKh.Egs
                     if (value2 == 0)
                     {
                         int finaloffset = origOffset + Dpxoffset + DpdOffset + (DpdTexOffset + 0x20) + 0x20000000;
-                        TempOffsets.Add(value1, finaloffset);
+                        TempOffsets.Add(value1 + t, finaloffset);
                         TextureCount++;
 						AssetCount++;
                     }
