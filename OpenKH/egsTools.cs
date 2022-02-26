@@ -159,6 +159,7 @@ namespace OpenKh.Egs
             // We only get the original files as for me it doesn't make sense to include
             // new "remastered" asset since it must be linked to an original one
             var patchFiles = Helpers.GetAllFiles(Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME)).ToList();
+			patchFiles.AddRange(Helpers.GetAllFiles(Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME)).ToList());
 
             var filenames = new List<string>();
 
@@ -222,71 +223,80 @@ namespace OpenKh.Egs
         private static Hed.Entry AddFile(string inputFolder, string filename, FileStream hedStream, FileStream pkgStream, bool shouldCompressData = false, bool shouldEncryptData = false)
         {
             var completeFilePath = Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME, filename);
+            var completeRawFilePath = Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME, filename);
             var offset = pkgStream.Position;
-
+			int actualLength = 0;
+			
             #region Data
+			if(File.Exists(completeFilePath)){
+				using var newFileStream = File.OpenRead(completeFilePath);
+				actualLength = (int)newFileStream.Length;
+				
+				bool RemasterExist = false;
+				string RemasteredPath = completeFilePath.Replace("\\original\\", "\\remastered\\");
+				if (Directory.Exists(RemasteredPath))
+					RemasterExist = true;
 
-            using var newFileStream = File.OpenRead(completeFilePath);
-			
-			bool RemasterExist = false;
-            string RemasteredPath = completeFilePath.Replace("\\original\\", "\\remastered\\");
-            if (Directory.Exists(RemasteredPath))
-                RemasterExist = true;
+				var header = new EgsHdAsset.Header()
+				{
+					// CompressedLenght => -2: no compression and encryption, -1: no compression 
+					CompressedLength = !shouldCompressData ? !shouldEncryptData ? -2 : -1 : 0,
+					DecompressedLength = (int)newFileStream.Length,
+					RemasteredAssetCount = 0,
+					CreationDate = -1
+				};
 
-            var header = new EgsHdAsset.Header()
-            {
-                // CompressedLenght => -2: no compression and encryption, -1: no compression 
-                CompressedLength = !shouldCompressData ? !shouldEncryptData ? -2 : -1 : 0,
-                DecompressedLength = (int)newFileStream.Length,
-                RemasteredAssetCount = 0,
-                CreationDate = -1
-            };
+				var decompressedData = newFileStream.ReadAllBytes();
+				// Make sure to align asset data on 16 bytes
+				if (decompressedData.Length % 0x10 != 0)
+				{
+					int diff = 16 - (decompressedData.Length % 0x10);
+					byte[] paddedData = new byte[decompressedData.Length + diff];
+					decompressedData.CopyTo(paddedData, 0);
+					Enumerable.Repeat((byte)0xCD, diff).ToArray().CopyTo(paddedData, decompressedData.Length);
+					decompressedData = paddedData;
+				}
+				
+				var compressedData = decompressedData.ToArray();
 
-            var decompressedData = newFileStream.ReadAllBytes();
-			// Make sure to align asset data on 16 bytes
-			if (decompressedData.Length % 0x10 != 0)
-			{
-				int diff = 16 - (decompressedData.Length % 0x10);
-				byte[] paddedData = new byte[decompressedData.Length + diff];
-				decompressedData.CopyTo(paddedData, 0);
-				Enumerable.Repeat((byte)0xCD, diff).ToArray().CopyTo(paddedData, decompressedData.Length);
-				decompressedData = paddedData;
-			}
-			
-            var compressedData = decompressedData.ToArray();
+				if (shouldCompressData)
+				{
+					compressedData = Helpers.CompressData(decompressedData);
+					header.CompressedLength = compressedData.Length;
+				}
+				
+				SDasset sdasset = new SDasset(filename, decompressedData, RemasterExist);
+				RemasterExist = false;
+				
+				if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.AssetCount;
 
-            if (shouldCompressData)
-            {
-                compressedData = Helpers.CompressData(decompressedData);
-                header.CompressedLength = compressedData.Length;
-            }
-			
-			SDasset sdasset = new SDasset(filename, decompressedData, RemasterExist);
-			RemasterExist = false;
-			
-			if(sdasset != null && !sdasset.Invalid) header.RemasteredAssetCount = sdasset.AssetCount;
+				// Encrypt and write current file data in the PKG stream
+				// The seed used for encryption is the original data header
+				var seed = new MemoryStream();
+				BinaryMapping.WriteObject<EgsHdAsset.Header>(seed, header);
 
-            // Encrypt and write current file data in the PKG stream
-            // The seed used for encryption is the original data header
-            var seed = new MemoryStream();
-            BinaryMapping.WriteObject<EgsHdAsset.Header>(seed, header);
+				var encryptionSeed = seed.ReadAllBytes();
+				var encryptedData = header.CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, encryptionSeed) : compressedData;
 
-            var encryptionSeed = seed.ReadAllBytes();
-            var encryptedData = header.CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, encryptionSeed) : compressedData;
+				// Write original file header
+				BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
 
-            // Write original file header
-            BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
-
-			if (header.RemasteredAssetCount > 0)
-			{
-				// Create an "Asset" to pass to ReplaceRemasteredAssets
-				EgsHdAsset asset = new EgsHdAsset(header, decompressedData, encryptedData, encryptionSeed);
-				ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, sdasset);
-			}
-			else
-			{
-				// Make sure to write the original file after remastered assets headers
-				pkgStream.Write(encryptedData);
+				if (header.RemasteredAssetCount > 0)
+				{
+					// Create an "Asset" to pass to ReplaceRemasteredAssets
+					EgsHdAsset asset = new EgsHdAsset(header, decompressedData, encryptedData, encryptionSeed);
+					ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, sdasset);
+				}
+				else
+				{
+					// Make sure to write the original file after remastered assets headers
+					pkgStream.Write(encryptedData);
+				}
+			}else if(File.Exists(completeRawFilePath)){
+				var newFileStream = File.ReadAllBytes(completeRawFilePath);
+				actualLength = BitConverter.ToInt32(newFileStream, 0);
+				
+				pkgStream.Write(newFileStream);
 			}
 
             #endregion
@@ -295,7 +305,7 @@ namespace OpenKh.Egs
             var hedHeader = new Hed.Entry()
             {
                 MD5 = Helpers.ToBytes(Helpers.CreateMD5(filename)),
-                ActualLength = (int)newFileStream.Length,
+                ActualLength = actualLength,
                 DataLength = (int)(pkgStream.Position - offset),
                 Offset = offset
             };
@@ -318,6 +328,7 @@ namespace OpenKh.Egs
             Hed.Entry originalHedHeader = null)
         {
             var completeFilePath = Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME, filename);
+			var completeRawFilePath = Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME, filename);
 
             var offset = pkgStream.Position;
             var originalHeader = asset.OriginalAssetHeader;
@@ -335,6 +346,8 @@ namespace OpenKh.Egs
             var decompressedData = asset.OriginalData;
             var encryptedData = asset.OriginalRawData;
             var encryptionSeed = asset.Seed;
+			
+			int actualLength = 0;
 
 			SDasset sdasset = null;
             // We want to replace the original file
@@ -388,27 +401,35 @@ namespace OpenKh.Egs
                 encryptedData = header.CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, encryptionSeed) : compressedData;
             }
 			
-            // Write original file header
-            BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
+			if(File.Exists(completeRawFilePath)){
+				var rawFileStream = File.ReadAllBytes(completeRawFilePath);
+				actualLength = BitConverter.ToInt32(rawFileStream, 0);
+				
+				pkgStream.Write(rawFileStream);
+			}else{
+				// Write original file header
+				BinaryMapping.WriteObject<EgsHdAsset.Header>(pkgStream, header);
 
-            var remasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
+				var remasteredHeaders = new List<EgsHdAsset.RemasteredEntry>();
 
-            // Is there remastered assets?
-            if (header.RemasteredAssetCount > 0)
-            {
-                remasteredHeaders = ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, sdasset);
-            }
-            else
-            {
-                // Make sure to write the original file after remastered assets headers
-                pkgStream.Write(encryptedData);
-            }
+				// Is there remastered assets?
+				if (header.RemasteredAssetCount > 0)
+				{
+					remasteredHeaders = ReplaceRemasteredAssets(inputFolder, filename, asset, pkgStream, encryptionSeed, encryptedData, sdasset);
+				}
+				else
+				{
+					// Make sure to write the original file after remastered assets headers
+					pkgStream.Write(encryptedData);
+				}
+				actualLength = decompressedData.Length;
+			}
 
             // Write a new entry in the HED stream
             var hedHeader = new Hed.Entry()
             {
                 MD5 = Helpers.ToBytes(Helpers.CreateMD5(filename)),
-                ActualLength = decompressedData.Length,
+                ActualLength = actualLength,
                 DataLength = (int)(pkgStream.Position - offset),
                 Offset = offset
             };
