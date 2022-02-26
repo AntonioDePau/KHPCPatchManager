@@ -117,6 +117,7 @@ public class KHPCPatchManager{
 		
 		Console.WriteLine($"KHPCPatchManager {version}");
 		
+		bool extract_raw = false;
 		string hedFile = null, pkgFile = null, pkgFolder = null;
 		List<string> originFolder = new List<string>();
 		List<string> patchFolders = new List<string>();
@@ -145,13 +146,19 @@ public class KHPCPatchManager{
 				}else if(Path.GetExtension(args[i]) == ".dddpcpatch"){
 					patchType.Add("DDD");
 					originFolder.Add(args[i]);
+				}else if(args[i] == "-raw"){
+					extract_raw = true;
 				}else{
 					if(args[i] == "help" || args[i] == "-help" || args[i] == "--help" || args[i] == "-h" || args[i] == "--h" || args[i] == "?") help = true;
 				}
 			}
-			if(hedFile != null){
+			if(hedFile != null && !extract_raw){
 				Console.WriteLine("Extracting pkg...");
 				OpenKh.Egs.EgsTools.Extract(hedFile, hedFile + "_out");
+				Console.WriteLine("Done!");
+			}else if(hedFile != null && extract_raw){
+				Console.WriteLine("Extracting raw pkg...");
+				OpenKh.Egs.EgsTools.ExtractRAW(hedFile, hedFile + "_out");
 				Console.WriteLine("Done!");
 			}else if(pkgFile != null && pkgFolder != null){
 				Console.WriteLine("Patching pkg...");

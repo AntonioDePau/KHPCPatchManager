@@ -14,6 +14,7 @@ namespace OpenKh.Egs
 {
     public class EgsTools
     {
+        private const string RAW_FILES_FOLDER_NAME = "raw";
         private const string ORIGINAL_FILES_FOLDER_NAME = "original";
         private const string REMASTERED_FILES_FOLDER_NAME = "remastered";
 
@@ -105,6 +106,31 @@ namespace OpenKh.Egs
                     var assetData = hdAsset.RemasteredAssetsDecompressedData[asset];
                     File.Create(outputFileNameRemastered).Using(stream => stream.Write(assetData));
                 }
+            }
+        }
+		
+		public static void ExtractRAW(string inputHed, string output, bool doNotExtractAgain = false)
+        {
+            var outputDir = output ?? Path.GetFileNameWithoutExtension(inputHed);
+            using var hedStream = File.OpenRead(inputHed);
+            using var img = File.OpenRead(Path.ChangeExtension(inputHed, "pkg"));
+
+            foreach (var entry in Hed.Read(hedStream))
+            {
+                var hash = Helpers.ToString(entry.MD5);
+                if (!Names.TryGetValue(hash, out var fileName))
+                    fileName = $"{hash}.dat";
+
+                var outputFileName = Path.Combine(outputDir, RAW_FILES_FOLDER_NAME, fileName);
+
+                if (doNotExtractAgain && File.Exists(outputFileName))
+                    continue;
+
+                Console.WriteLine(outputFileName);
+                CreateDirectoryForFile(outputFileName);
+
+				byte[] rawData = img.ReadBytes(entry.DataLength);
+                File.Create(outputFileName).Using(stream => stream.Write(rawData));
             }
         }
 
@@ -847,7 +873,7 @@ namespace OpenKh.Egs
                 }
 				//Add our current list of offsets from the dpd to our main ffsets list
                 Offsets.AddRange(TempOffsets.Values);
-				//then clear the temp list for the next dpd
+				//then clear the temp list for the next dpdF
                 TempOffsets.Clear();
             }
         }
