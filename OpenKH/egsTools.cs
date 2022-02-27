@@ -158,8 +158,12 @@ namespace OpenKh.Egs
             // Get files to inject in the PKG to detect if we want to include new files or not
             // We only get the original files as for me it doesn't make sense to include
             // new "remastered" asset since it must be linked to an original one
-            var patchFiles = Helpers.GetAllFiles(Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME)).ToList();
-			patchFiles.AddRange(Helpers.GetAllFiles(Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME)).ToList());
+            var patchFiles = new List<string>();
+			if(Directory.Exists(Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME)))
+				patchFiles.AddRange(Helpers.GetAllFiles(Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME)).ToList());
+			
+			if(Directory.Exists(Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME)))
+				patchFiles.AddRange(Helpers.GetAllFiles(Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME)).ToList());
 
             var filenames = new List<string>();
 
