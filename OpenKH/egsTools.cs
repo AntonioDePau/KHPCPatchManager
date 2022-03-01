@@ -459,6 +459,9 @@ namespace OpenKh.Egs
             var relativePath = Helpers.GetRelativePath(originalFile, Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME));
             var remasteredAssetsFolder = Path.Combine(inputFolder, REMASTERED_FILES_FOLDER_NAME, relativePath);
 
+			var assetConfig = new AssetConfig(remasteredAssetsFolder);
+			int assetCount = assetConfig.ForceAssetCount == -1 ? sdasset != null && !sdasset.Invalid ? sdasset.AssetCount : 0 : assetConfig.ForceAssetCount;
+			
             var allRemasteredAssetsData = new MemoryStream();
             
             foreach (var remasteredAssetHeader in asset.RemasteredAssetHeaders.Values){
@@ -466,13 +469,13 @@ namespace OpenKh.Egs
             }
 
 			//At the moment this only applies on fresh PKGs (or ones that haven't been patched with this modded MDLX before, otherwise we'd neet to analyse ALL MDLX files)
-			if(sdasset != null && !sdasset.Invalid){
+			if(sdasset != null && !sdasset.Invalid && assetConfig.UpdateAssetCountFromOriginal){
 				File.AppendAllText("custom_hd_assets.txt", "HD assets for: " + originalFile + "\n");
-				while(oldRemasteredHeaders.Count > sdasset.AssetCount){
+				while(oldRemasteredHeaders.Count > assetCount){
 					File.AppendAllText("custom_hd_assets.txt", "Removing: -" + (oldRemasteredHeaders.Count-1) + ".dds\n");
 					oldRemasteredHeaders.RemoveAt(oldRemasteredHeaders.Count-1);
 				}
-				while(oldRemasteredHeaders.Count < sdasset.AssetCount){
+				while(oldRemasteredHeaders.Count < assetCount){
 					var newRemasteredAssetHeader = new EgsHdAsset.RemasteredEntry()
 					{
 						CompressedLength = 0,
@@ -512,34 +515,37 @@ namespace OpenKh.Egs
                     remasteredNames[l] = remasteredNames[l].Replace(remasteredAssetsFolder, "").Replace(@"\", "/");
                 }
 
-				//Make a sorted list tempremasteredNames
-				List<string> tempremasteredNamesD = new List<string>();
-				List<string> tempremasteredNamesP = new List<string>();
-				for (int i = 0; i < remasteredNames.Count; i++)
-				{
-					var filename = "/-"  + i.ToString();
-					Console.WriteLine("TEST for " + filename + ".dds/.png");
-					if (remasteredNames.Contains(filename + ".dds"))
-					{
-						Console.WriteLine(filename + ".dds" + "FOUND!");
-						tempremasteredNamesD.Add(filename + ".dds");
-						remasteredNames.Remove(filename + ".dds");
-					}
-					else if (remasteredNames.Contains(filename + ".png"))
-					{
-						Console.WriteLine(filename + ".png" + "FOUND!");
-						tempremasteredNamesP.Add(filename + ".png");
-						remasteredNames.Remove(filename + ".png");
-					}
-				}
-				//Add the image files at the end
-				//DDS list first, PNG list 2nd, everything else after
-				tempremasteredNamesD.AddRange(tempremasteredNamesP);
-				tempremasteredNamesD.AddRange(remasteredNames);
-				//Add the sorted list back to remasteredNames
-				remasteredNames = tempremasteredNamesD;
-			}
-			
+                if(assetConfig.SortOrder){
+                    //Make a sorted list tempremasteredNames
+                    List<string> tempremasteredNamesD = new List<string>();
+                    List<string> tempremasteredNamesP = new List<string>();
+                    List<string> tempremasteredNames = new List<string>(remasteredNames);
+                    for (int i = 0; i < remasteredNames.Count; i++)
+                    {
+                        var filename = "/-"  + i.ToString();
+                        Console.WriteLine("TEST for " + filename + ".dds/.png");
+                        if (remasteredNames.Contains(filename + ".dds"))
+                        {
+                            Console.WriteLine(filename + ".dds" + "FOUND!");
+                            tempremasteredNamesD.Add(filename + ".dds");
+                            tempremasteredNames.Remove(filename + ".dds");
+                        }
+                        else if (remasteredNames.Contains(filename + ".png"))
+                        {
+                            Console.WriteLine(filename + ".png" + "FOUND!");
+                            tempremasteredNamesP.Add(filename + ".png");
+                            tempremasteredNames.Remove(filename + ".png");
+                        }
+                    }
+                    //Add the image files at the end
+                    //DDS list first, PNG list 2nd, everything else after
+                    tempremasteredNamesD.AddRange(tempremasteredNamesP);
+                    tempremasteredNamesD.AddRange(tempremasteredNames);
+                    //Add the sorted list back to remasteredNames
+                    remasteredNames = tempremasteredNamesD;
+                }
+            }
+
             for(int i=0;i<oldRemasteredHeaders.Count;i++)
             {
 				var remasteredAssetHeader = oldRemasteredHeaders[i];
@@ -638,6 +644,50 @@ namespace OpenKh.Egs
 
         #endregion
     }
+	
+	class AssetConfig
+	{
+		public bool SortOrder = true;
+		public bool UpdateAssetCountFromOriginal = true;
+		public bool UpdateAssetCountFromRemastered = true;
+		public int ForceAssetCount = -1;
+		
+		public AssetConfig(string remasteredAssetsFolder){
+			string config = Path.Combine(remasteredAssetsFolder, "assets.config");
+			
+			if(File.Exists(config)){
+				string[] options = File.ReadAllLines(config);
+				for(int i=0;i<options.Length;i++){
+					string option = options[i].ToLower().Replace(" ", "");
+					if(option.StartsWith("#")) continue;
+					switch(option){
+						case "sortorder=false":
+							SortOrder = false;
+							break;
+						case "updateassetcountfromoriginal=false":
+							UpdateAssetCountFromOriginal = false;
+							break;
+						case "updateassetcountfromremastered=false":
+							UpdateAssetCountFromRemastered = false;
+							break;
+					}
+					if(option.Contains("forceassetcount=")){
+						try{
+							ForceAssetCount = Int32.Parse(option.Replace("forceassetcount=", ""));
+						}catch(Exception e){
+							Console.WriteLine("Incorrect number format for ForceAssetCount: " + e.ToString());
+						}
+					}
+					if(option.Contains("forceassetorder=")){
+						string[] assets = option.Replace("forceassetcount=", "").Split(',');
+						for(int j=0;j<assets.Length;j++){
+							
+						}
+					}
+				}
+			}
+		}
+	}
 	
 	class SDasset
     {
