@@ -513,6 +513,7 @@ namespace OpenKh.Egs
                 for (int l = 0; l < remasteredNames.Count; l++) //fix names
                 {
                     remasteredNames[l] = remasteredNames[l].Replace(remasteredAssetsFolder, "").Replace(@"\", "/");
+                    remasteredNames[l] = Path.ChangeExtension(remasteredNames[l], Path.GetExtension(remasteredNames[l]).ToLower());
                 }
 
                 if(assetConfig.SortOrder){
