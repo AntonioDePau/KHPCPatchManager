@@ -555,7 +555,7 @@ namespace OpenKh.Egs
 				//get actual file names ONLY if the remastered asset count is greater than 0 and ONLY if the number of files in the 
                 //remastered folder for the SD asset is equal to or greater than what the total count is from what was gotten in SDasset.
                 //if those criteria aren't met then do the old method.
-                if (remasteredNames.Count >= oldRemasteredHeaders.Count && remasteredNames.Count > 0)
+                if (sdasset != null && !sdasset.Invalid && remasteredNames.Count >= oldRemasteredHeaders.Count && remasteredNames.Count > 0)
                 {
                     filename = remasteredNames[i].Remove(0, 1);
                 }
