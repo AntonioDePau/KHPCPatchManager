@@ -189,12 +189,14 @@ namespace OpenKh.Egs
             {
 				if(bgw1 != null) bgw1.ReportProgress(0, bgw1.PKG + ": " + (hedHeaders.IndexOf(hedHeader)+1) + "/" + hedHeaders.Count);
                 var hash = Helpers.ToString(hedHeader.MD5);
+                bool isNameUnknown = false;
 
                 // We don't know this filename, we ignore it
                 if (!Names.TryGetValue(hash, out var filename))
                 {
 					Console.WriteLine($"Unknown filename (hash: {hash})");
-					continue;
+                    isNameUnknown = true;
+					//continue;
                 }
 
                 if (patchFiles.Contains(filename))
@@ -208,7 +210,7 @@ namespace OpenKh.Egs
 
                 if (hedHeader.DataLength > 0)
                 {
-                    ReplaceFile(inputFolder, filename, patchedHedStream, patchedPkgStream, asset, hedHeader);
+                    ReplaceFile(inputFolder, filename, patchedHedStream, patchedPkgStream, asset, hedHeader, isNameUnknown);
                 }
                 else
                 {
@@ -329,7 +331,8 @@ namespace OpenKh.Egs
             FileStream hedStream,
             FileStream pkgStream,
             EgsHdAsset asset,
-            Hed.Entry originalHedHeader = null)
+            Hed.Entry originalHedHeader = null,
+            bool isNameUnknown = false)
         {
             var completeFilePath = Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME, filename);
 			var completeRawFilePath = Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME, filename);
@@ -432,7 +435,7 @@ namespace OpenKh.Egs
             // Write a new entry in the HED stream
             var hedHeader = new Hed.Entry()
             {
-                MD5 = Helpers.ToBytes(Helpers.CreateMD5(filename)),
+                MD5 = Helpers.ToBytes(isNameUnknown ? filename : Helpers.CreateMD5(filename)),
                 ActualLength = actualLength,
                 DataLength = (int)(pkgStream.Position - offset),
                 Offset = offset
