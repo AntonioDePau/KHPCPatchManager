@@ -1114,13 +1114,26 @@ namespace OpenKh.Egs
         public int AssetCount = 0;
         public bool Invalid = false;
 
-        //i don't think RAW textures can ever be single files, but added just in case
-        public RAW(byte[] originalAssetData)
+        //Getting the offsets for these are a bit complicated due to
+        //images being one after another with no offset table to use.
+        public RAW(byte[] AssetData, int AssetOffset = 0)
         {
-            using MemoryStream ms = new MemoryStream(originalAssetData);
+            using MemoryStream ms = new MemoryStream(AssetData);
 
-            var magic = ms.ReadInt32();
-            if (magic != 0) //0x00000000
+            //this is real jank. we need to modify the final offset later as a special case for 
+            //map files. hopefully this actually works for all maps. (it didn't)
+            //int modify = 0;
+            //int modify2 = 0;
+            //if (special == 5259597) // MAP
+            //    modify = +128;
+            //if (special == 4345666)
+            //{
+            //    modify = -16;
+            //    modify2 = 1;
+            //}
+
+            int magic = ms.ReadInt32();
+            if (magic != 0 && AssetOffset == 0) //0x00000000
             {
                 Invalid = true;
                 return;
@@ -1128,28 +1141,64 @@ namespace OpenKh.Egs
 
             ms.Seek(0x0c, SeekOrigin.Begin);
             TextureCount += ms.ReadInt32();
-			AssetCount = TextureCount;
+            AssetCount = TextureCount;
 
-            ms.ReadInt32();
-            ms.ReadInt32();
-            int infoOffset = ms.ReadInt32();
+            ms.Seek(0x18, SeekOrigin.Begin);
+            int GsinfoOff = ms.ReadInt32();
             int dataOffset = ms.ReadInt32();
 
             int diff = 0;
             for (int i = 0; i < TextureCount; i++)
             {
-                int offset = dataOffset + diff + (i * 0x10) + 0x20000000;
+                int offset = AssetOffset + dataOffset + diff + (i * 0x10) + 0x20000000;
                 Offsets.Add(offset);
 
-                int textInfoOffset = infoOffset + 0x20 + 0x40 + 0x10 + (0xA0 * i);
-                ms.Seek(textInfoOffset, SeekOrigin.Begin);
-                ulong num = ms.ReadUInt64();
-                int width = (ushort)(1u << ((int)(num >> 0x1A) & 0x0F));
-                int height = (ushort)(1u << ((int)(num >> 0x1E) & 0x0F));
-                diff += width * height;
+                ms.Seek(GsinfoOff + 0x70 + (i * 0xA0), SeekOrigin.Begin);
+                long Tex0Reg = ms.ReadInt64();
+
+                uint PSM = (uint)(Tex0Reg >> 20) & 0x3fu;
+                int width = (ushort)(1u << ((int)(Tex0Reg >> 26) & 0x0F));
+                int height = (ushort)(1u << ((int)(Tex0Reg >> 30) & 0x0F));
+
+                int bpp;
+                bool div = false;
+                switch (PSM)
+                {
+                    case (0):
+                    case (1):
+                    case (27):
+                    case (26):
+                    case (48):
+                    case (49):
+                        bpp = 4;
+                        break;
+                    case (2):
+                    case (10):
+                    case (50):
+                    case (58):
+                        bpp = 2;
+                        break;
+                    case (19):
+                    case (44): //unsure about this one
+                        bpp = 1;
+                        break;
+                    case (20):
+                        bpp = 2;
+                        div = true;
+                        break;
+                    default:
+                        bpp = 1;
+                        div = false;
+                        Console.WriteLine("Warning: Unknown Pixel Storage Mode! PSM = " + PSM);
+                        break;
+                }
+                if (!div)
+                    diff += (width * height) * bpp;
+                else
+                    diff += (width * height) / bpp;
             }
 
-            int index = Helpers.IndexOfByteArray(originalAssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), 0);
+            int index = Helpers.IndexOfByteArray(AssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), 0);
 
             while (index > -1)
             {
@@ -1159,57 +1208,11 @@ namespace OpenKh.Egs
                 ms.Seek(0x1c, SeekOrigin.Current);
                 int texaOffset = ms.ReadInt32();
                 int offset = index + texaOffset + 0x08 + (imageToApplyTo * 0x10) + 0x20000000;
-                Offsets.Add(offset);
+                Offsets.Add(AssetOffset + offset);
 
                 TextureCount++;
 				AssetCount++;
-                index = Helpers.IndexOfByteArray(originalAssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), index + 1);
-            }
-
-        }
-
-        public RAW(byte[] subAssetData, int origOffset)
-        {
-            using MemoryStream ms = new MemoryStream(subAssetData);
-
-            ms.Seek(0x0c, SeekOrigin.Begin);
-            TextureCount += ms.ReadInt32();
-			AssetCount = TextureCount;
-
-            ms.ReadInt32();
-            ms.ReadInt32();
-            int infoOffset = ms.ReadInt32();
-            int dataOffset = ms.ReadInt32();
-
-            int diff = 0;
-            for (int i = 0; i < TextureCount; i++)
-            {
-                int offset = dataOffset + diff + (i * 0x10) + 0x20000000;
-                Offsets.Add(origOffset + offset);
-
-                int textInfoOffset = infoOffset + 0x20 + 0x40 + 0x10 + (0xA0 * i);
-                ms.Seek(textInfoOffset, SeekOrigin.Begin);
-                ulong num = ms.ReadUInt64();
-                int width = (ushort)(1u << ((int)(num >> 0x1A) & 0x0F));
-                int height = (ushort)(1u << ((int)(num >> 0x1E) & 0x0F));
-                diff += width * height;
-            }
-
-            int index = Helpers.IndexOfByteArray(subAssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), 0);
-
-            while (index > -1)
-            {
-                ms.Seek(index + 0x0a, SeekOrigin.Begin);
-                int imageToApplyTo = (int)ms.ReadInt16();
-
-                ms.Seek(0x1c, SeekOrigin.Current);
-                int texaOffset = ms.ReadInt32();
-                int offset = index + texaOffset + 0x08 + (imageToApplyTo * 0x10) + 0x20000000;
-                Offsets.Add(origOffset + offset);
-
-                TextureCount++;
-				AssetCount++;
-                index = Helpers.IndexOfByteArray(subAssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), index + 1);
+                index = Helpers.IndexOfByteArray(AssetData, System.Text.Encoding.UTF8.GetBytes("TEXA"), index + 1);
             }
         }
     }
