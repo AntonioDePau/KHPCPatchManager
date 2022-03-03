@@ -194,9 +194,19 @@ namespace OpenKh.Egs
                 // We don't know this filename, we ignore it
                 if (!Names.TryGetValue(hash, out var filename))
                 {
-					Console.WriteLine($"Unknown filename (hash: {hash})");
-                    isNameUnknown = true;
-					//continue;
+                    Console.WriteLine($"Unknown filename (hash: {hash})");
+                    var tempname = patchFiles.Find(x => Helpers.CreateMD5(x) == hash);
+                    if (tempname != null)
+                    {
+                    	filename = tempname;
+						Console.WriteLine($"Wait, actually I found it in your patch: {filename}");
+						File.AppendAllText("resources/custom_filenames.txt", filename + "\n");
+                    }
+                    else
+                    {
+                        isNameUnknown = true;
+                        //continue;
+                    }
                 }
 
                 if (patchFiles.Contains(filename))
