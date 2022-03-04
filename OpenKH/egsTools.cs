@@ -537,16 +537,16 @@ namespace OpenKh.Egs
                     for (int i = 0; i < remasteredNames.Count; i++)
                     {
                         var filename = "/-"  + i.ToString();
-                        Console.WriteLine("TEST for " + filename + ".dds/.png");
+                        //Console.WriteLine("TEST for " + filename + ".dds/.png");
                         if (remasteredNames.Contains(filename + ".dds"))
                         {
-                            Console.WriteLine(filename + ".dds" + "FOUND!");
+                            //Console.WriteLine(filename + ".dds" + "FOUND!");
                             tempremasteredNamesD.Add(filename + ".dds");
                             tempremasteredNames.Remove(filename + ".dds");
                         }
                         else if (remasteredNames.Contains(filename + ".png"))
                         {
-                            Console.WriteLine(filename + ".png" + "FOUND!");
+                            //Console.WriteLine(filename + ".png" + "FOUND!");
                             tempremasteredNamesP.Add(filename + ".png");
                             tempremasteredNames.Remove(filename + ".png");
                         }
