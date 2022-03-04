@@ -517,11 +517,7 @@ namespace OpenKh.Egs
             //we use this list later to correctly add the file names to the PKG.
             if (Directory.Exists(remasteredAssetsFolder) && Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories).Length > 0) //only do this if there are actually file in it.
             {
-				string[] foundFiles = Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories);
-                
-				for (int l = 0; l < foundFiles.Length; l++){
-					if (remasteredNames.IndexOf(foundFiles[l]) == -1) remasteredNames.Add(foundFiles[l]);
-				}
+                remasteredNames.AddRange(Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories).ToList());
 				
                 for (int l = 0; l < remasteredNames.Count; l++) //fix names
                 {
