@@ -159,11 +159,11 @@ namespace OpenKh.Egs
             // We only get the original files as for me it doesn't make sense to include
             // new "remastered" asset since it must be linked to an original one
             var patchFiles = new List<string>();
-			if(Directory.Exists(Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME)))
-				patchFiles.AddRange(Helpers.GetAllFiles(Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME)).ToList());
+			if(ZipManager.DirectoryExists(Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME)))
+				patchFiles.AddRange(ZipManager.GetFiles(Path.Combine(inputFolder, ORIGINAL_FILES_FOLDER_NAME)).ToList());
 			
-			if(Directory.Exists(Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME)))
-				patchFiles.AddRange(Helpers.GetAllFiles(Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME)).ToList());
+			if(ZipManager.DirectoryExists(Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME)))
+				patchFiles.AddRange(ZipManager.GetFiles(Path.Combine(inputFolder, RAW_FILES_FOLDER_NAME)).ToList());
 
             var filenames = new List<string>();
 
@@ -200,7 +200,7 @@ namespace OpenKh.Egs
                     {
                     	filename = tempname;
 						Console.WriteLine($"Wait, actually I found it in your patch: {filename}");
-						File.AppendAllText("resources/custom_filenames.txt", filename + "\n");
+						File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources/custom_filenames.txt"), filename + "\n");
                     }
                     else
                     {
@@ -244,13 +244,13 @@ namespace OpenKh.Egs
 			int actualLength = 0;
 			
             #region Data
-			if(File.Exists(completeFilePath)){
-				using var newFileStream = File.OpenRead(completeFilePath);
+			if(ZipManager.FileExists(completeFilePath)){
+				using var newFileStream = ZipManager.FileReadStream(completeFilePath);
 				actualLength = (int)newFileStream.Length;
 				
 				bool RemasterExist = false;
 				string RemasteredPath = completeFilePath.Replace("\\original\\", "\\remastered\\");
-				if (Directory.Exists(RemasteredPath))
+				if (ZipManager.DirectoryExists(RemasteredPath))
 					RemasterExist = true;
 
 				var header = new EgsHdAsset.Header()
@@ -308,8 +308,8 @@ namespace OpenKh.Egs
 					// Make sure to write the original file after remastered assets headers
 					pkgStream.Write(encryptedData);
 				}
-			}else if(File.Exists(completeRawFilePath)){
-				var newFileStream = File.ReadAllBytes(completeRawFilePath);
+			}else if(ZipManager.FileExists(completeRawFilePath)){
+				var newFileStream = ZipManager.FileReadAllBytes(completeRawFilePath);
 				actualLength = BitConverter.ToInt32(newFileStream, 0);
 				
 				pkgStream.Write(newFileStream);
@@ -327,7 +327,7 @@ namespace OpenKh.Egs
             };
 			
             if (!Names.TryGetValue(Helpers.ToString(hedHeader.MD5), out var existingfilename)){
-				File.AppendAllText("resources/custom_filenames.txt", filename + "\n");
+				File.AppendAllText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "resources/custom_filenames.txt"), filename + "\n");
             }
 
             BinaryMapping.WriteObject<Hed.Entry>(hedStream, hedHeader);
@@ -368,19 +368,19 @@ namespace OpenKh.Egs
 
 			SDasset sdasset = null;
             // We want to replace the original file
-            if (File.Exists(completeFilePath))
+            if (ZipManager.FileExists(completeFilePath))
             {
 				bool RemasterExist = false;
 				
                 Console.WriteLine($"Replacing original: {filename}!");
 				string RemasteredPath = completeFilePath.Replace("\\original\\","\\remastered\\");
-                if (Directory.Exists(RemasteredPath))
+                if (ZipManager.DirectoryExists(RemasteredPath))
                 {
                     Console.WriteLine($"Remastered Folder Exists! Path: {RemasteredPath}");
                     RemasterExist = true;
                 }
 
-                using var newFileStream = File.OpenRead(completeFilePath);
+                using var newFileStream = ZipManager.FileReadStream(completeFilePath);
                 decompressedData = newFileStream.ReadAllBytes();
 				// Make sure to align asset data on 16 bytes
 				if (decompressedData.Length % 0x10 != 0)
@@ -418,8 +418,8 @@ namespace OpenKh.Egs
                 encryptedData = header.CompressedLength > -2 ? EgsEncryption.Encrypt(compressedData, encryptionSeed) : compressedData;
             }
 			
-			if(File.Exists(completeRawFilePath)){
-				var rawFileStream = File.ReadAllBytes(completeRawFilePath);
+			if(ZipManager.FileExists(completeRawFilePath)){
+				var rawFileStream = ZipManager.FileReadAllBytes(completeRawFilePath);
 				actualLength = BitConverter.ToInt32(rawFileStream, 0);
 				
 				pkgStream.Write(rawFileStream);
@@ -515,13 +515,13 @@ namespace OpenKh.Egs
             if (asset.RemasteredAssetHeaders.Values.Count == 0 || offset != asset.RemasteredAssetHeaders.Values.First().Offset) remasteredNames.Clear();
             //grab list of full file paths from current remasteredAssetsFolder path and add them to a list.
             //we use this list later to correctly add the file names to the PKG.
-            if (Directory.Exists(remasteredAssetsFolder) && Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories).Length > 0) //only do this if there are actually file in it.
+            if (ZipManager.DirectoryExists(remasteredAssetsFolder) && ZipManager.GetFiles(remasteredAssetsFolder).ToList().Count > 0) //only do this if there are actually file in it.
             {
-                remasteredNames.AddRange(Directory.GetFiles(remasteredAssetsFolder, "*", SearchOption.AllDirectories).ToList());
+                remasteredNames.AddRange(ZipManager.GetFiles(remasteredAssetsFolder).ToList());
 				
                 for (int l = 0; l < remasteredNames.Count; l++) //fix names
                 {
-                    remasteredNames[l] = remasteredNames[l].Replace(remasteredAssetsFolder, "").Replace(@"\", "/");
+                    remasteredNames[l] = remasteredNames[l].Replace(remasteredAssetsFolder + "/", "").Replace(@"\", "/");
                     if (Path.GetExtension(remasteredNames[l]) != "")
                         remasteredNames[l] = Path.ChangeExtension(remasteredNames[l], Path.GetExtension(remasteredNames[l]).ToLower());
                 }
@@ -533,7 +533,7 @@ namespace OpenKh.Egs
                     List<string> tempremasteredNames = new List<string>(remasteredNames);
                     for (int i = 0; i < remasteredNames.Count; i++)
                     {
-                        var filename = "/-"  + i.ToString();
+                        var filename = "-"  + i.ToString();
                         //Console.WriteLine("TEST for " + filename + ".dds/.png");
                         if (remasteredNames.Contains(filename + ".dds"))
                         {
@@ -567,7 +567,7 @@ namespace OpenKh.Egs
                 //if those criteria aren't met then do the old method.
                 if (sdasset != null && !sdasset.Invalid && remasteredNames.Count >= oldRemasteredHeaders.Count && remasteredNames.Count > 0)
                 {
-                    filename = remasteredNames[i].Remove(0, 1);
+                    filename = remasteredNames[i];
                 }
 				
                 var assetFilePath = Path.Combine(remasteredAssetsFolder, filename);
@@ -576,11 +576,11 @@ namespace OpenKh.Egs
                 var assetData = asset.RemasteredAssetsDecompressedData.ContainsKey(filename) ? asset.RemasteredAssetsDecompressedData[filename] : new byte[]{};
                 var decompressedLength = remasteredAssetHeader.DecompressedLength;
 				var originalAssetOffset = remasteredAssetHeader.OriginalAssetOffset;
-                if (File.Exists(assetFilePath))
+                if (ZipManager.FileExists(assetFilePath))
                 {
                     Console.WriteLine($"Replacing remastered file: {relativePath}/{filename}");
 
-                    assetData = File.ReadAllBytes(assetFilePath);
+                    assetData = ZipManager.FileReadAllBytes(assetFilePath);
                     decompressedLength = assetData.Length;
                     assetData = remasteredAssetHeader.CompressedLength > -1 ? Helpers.CompressData(assetData) : assetData;
                     assetData = remasteredAssetHeader.CompressedLength > -2 ? EgsEncryption.Encrypt(assetData, seed) : assetData;
@@ -666,8 +666,8 @@ namespace OpenKh.Egs
 		public AssetConfig(string remasteredAssetsFolder){
 			string config = Path.Combine(remasteredAssetsFolder, "assets.config");
 			
-			if(File.Exists(config)){
-				string[] options = File.ReadAllLines(config);
+			if(ZipManager.FileExists(config)){
+				string[] options = ZipManager.FileReadAllLines(config);
 				for(int i=0;i<options.Length;i++){
 					string option = options[i].ToLower().Replace(" ", "");
 					if(option.StartsWith("#")) continue;
