@@ -25,6 +25,95 @@ public class ListBoxItem{
 	}
 }
 
+namespace OpenKh.Egs{
+	public class ZipManager{
+		public static List<ZipFile> ZipFiles {get{return KHPCPatchManager.ZipFiles;}}
+		
+		private static bool ZipDirectoryExists(string dir){
+			return ZipFiles.Find(x => x.SelectEntries(Path.Combine(dir, "*")).Count > 0) != null;
+		}
+		
+		public static bool ZipFileExists(string file){
+			return ZipFiles.Find(x => x.ContainsEntry(file)) != null;
+		}
+		
+		public static bool DirectoryExists(string dir){
+			return ZipDirectoryExists(dir) || Directory.Exists(dir);
+		}
+		
+		public static bool FileExists(string file){
+			return ZipFileExists(file) || File.Exists(file);
+		}
+		
+		public static IEnumerable<string> GetFiles(string folder){
+			if(ZipDirectoryExists(folder)){
+				List<string> foundFiles = new List<string>();
+				ZipFiles.ForEach(x => {
+					ICollection<ZipEntry> entries = x.SelectEntries(Path.Combine(folder, "*"));
+					foreach(var entry in entries){
+						string filename = entry.FileName.Replace(folder.Replace(@"\", "/") + "/", "");
+						if(!entry.IsDirectory && !foundFiles.Contains(filename)){
+							foundFiles.Add(filename);
+						}
+					}
+				});
+				return foundFiles;
+			}else if(Directory.Exists(folder)){
+				return Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories)
+                            .Select(x => x.Replace($"{folder}\\", "")
+                            .Replace(@"\", "/"));
+			}
+			return Enumerable.Empty<string>();
+		}
+		
+		public static byte[] FileReadAllBytes(string file){
+			if(ZipFileExists(file)){
+				ZipEntry entry = null;
+				foreach(var zipFile in ZipFiles){
+					var entries = zipFile.SelectEntries(file).Where(y => !y.IsDirectory);
+					if(entries.FirstOrDefault() != null){
+						entry = entries.FirstOrDefault();
+						
+						using (var stream = entry.OpenReader()){
+							var bytes = new byte[entry.UncompressedSize];
+							stream.Read(bytes, 0, (int)entry.UncompressedSize);
+							return bytes;
+						}
+					}
+				};
+			}else if(File.Exists(file)){
+				return File.ReadAllBytes(file);
+			}
+			return new byte[0];
+		}
+		
+		public static string[] FileReadAllLines(string file){
+			if(ZipFileExists(file)){
+				byte[] bytes = FileReadAllBytes(file);
+				string text = System.Text.Encoding.ASCII.GetString(bytes);
+				return text.Split(
+					new string[] { Environment.NewLine },
+					StringSplitOptions.None
+				);
+			}else if(File.Exists(file)){
+				return File.ReadAllLines(file);
+			}
+			return new string[0];
+		}
+		
+		public static Stream FileReadStream(string file){
+			if(ZipFileExists(file)){
+				byte[] bytes = FileReadAllBytes(file);
+				return new MemoryStream(bytes);
+			}else if(File.Exists(file)){
+				var stream = File.OpenRead(file);
+				return stream;
+			}
+			return new MemoryStream();
+		}
+	}
+}
+
 public class KHPCPatchManager{	
 	static Assembly ExecutingAssembly = Assembly.GetExecutingAssembly();
 	static string[] EmbeddedLibraries = ExecutingAssembly.GetManifestResourceNames().Where(x => x.EndsWith(".dll")).ToArray();
@@ -117,6 +206,9 @@ public class KHPCPatchManager{
 		
 		Console.WriteLine($"KHPCPatchManager {version}");
 		
+		bool extract_raw = false;
+		bool nobackup = false;
+		bool extractPatch = false;
 		string hedFile = null, pkgFile = null, pkgFolder = null;
 		List<string> originFolder = new List<string>();
 		List<string> patchFolders = new List<string>();
@@ -145,13 +237,23 @@ public class KHPCPatchManager{
 				}else if(Path.GetExtension(args[i]) == ".dddpcpatch"){
 					patchType.Add("DDD");
 					originFolder.Add(args[i]);
+				}else if(args[i] == "-extract"){
+					extractPatch = true;
+				}else if(args[i] == "-nobackup"){
+					nobackup = true;
+				}else if(args[i] == "-raw"){
+					extract_raw = true;
 				}else{
 					if(args[i] == "help" || args[i] == "-help" || args[i] == "--help" || args[i] == "-h" || args[i] == "--h" || args[i] == "?") help = true;
 				}
 			}
-			if(hedFile != null){
+			if(hedFile != null && !extract_raw){
 				Console.WriteLine("Extracting pkg...");
 				OpenKh.Egs.EgsTools.Extract(hedFile, hedFile + "_out");
+				Console.WriteLine("Done!");
+			}else if(hedFile != null && extract_raw){
+				Console.WriteLine("Extracting raw pkg...");
+				OpenKh.Egs.EgsTools.ExtractRAW(hedFile, hedFile + "_out");
 				Console.WriteLine("Done!");
 			}else if(pkgFile != null && pkgFolder != null){
 				Console.WriteLine("Patching pkg...");
@@ -179,7 +281,7 @@ public class KHPCPatchManager{
 				Console.WriteLine("Done!");
 			}else if(originFolder.Count > 0){
 				if(patchType.Distinct().ToList().Count == 1){
-					ApplyPatch(originFolder, patchType[0]);
+					ApplyPatch(originFolder, patchType[0], null, !nobackup, extractPatch);
 				}else{
 					Console.WriteLine(multiplePatchTypesSelected);
 				}
@@ -218,7 +320,8 @@ public class KHPCPatchManager{
 		if(GUI_Displayed) status.Text = "Extracting " + currentExtraction + $": {percent}%";
 	}
 	
-	static void ApplyPatch(List<string> patchFile, string patchType, string epicFolder = null, bool backupPKG = true){
+	public static List<ZipFile> ZipFiles;
+	static void ApplyPatch(List<string> patchFile, string patchType, string epicFolder = null, bool backupPKG = true, bool extractPatch = false){
 		Console.WriteLine("Applying " + patchType + " patch...");
 		if(epicFolder == null){
 			epicFolder = @"C:\Program Files\Epic Games\KH_1.5_2.5\Image\en\";
@@ -234,27 +337,35 @@ public class KHPCPatchManager{
 				epicFolder = Console.ReadLine().Trim('"');
 			}
 		}
-		Console.WriteLine("Extracting patch...");
-		if(GUI_Displayed) status.Text = $"Extracting patch: 0%";
 		string timestamp = DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss_ms");
-		string tempFolder = patchFile[0] + "_" + timestamp;
+		string tempFolder = "";
+		if(extractPatch){
+			Console.WriteLine("Extracting patch...");
+			if(GUI_Displayed) status.Text = $"Extracting patch: 0%";
+			tempFolder = patchFile[0] + "_" + timestamp;
+			Directory.CreateDirectory(tempFolder);
+		}
 		MyBackgroundWorker backgroundWorker1 = new MyBackgroundWorker();
 		backgroundWorker1.ProgressChanged += (s,e) => {
 			Console.WriteLine((string)e.UserState);
 			if(GUI_Displayed) status.Text = (string)e.UserState;
 		};
 		backgroundWorker1.DoWork += (s,e) => {
-			Directory.CreateDirectory(tempFolder);
 			string epicBackup = Path.Combine(epicFolder, "backup");
 			Directory.CreateDirectory(epicBackup);
 			
+			ZipFiles = new List<ZipFile>();
 			for(int i=0;i<patchFile.Count;i++){
 				using(ZipFile zip = ZipFile.Read(patchFile[i])){
-					totalFiles = zip.Count;
-					filesExtracted = 0;
-					currentExtraction = patchFile[i];
-					zip.ExtractProgress += new EventHandler<ExtractProgressEventArgs>(ExtractionProgress);
-					zip.ExtractAll(tempFolder, ExtractExistingFileAction.OverwriteSilently);
+					if(extractPatch){
+						totalFiles = zip.Count;
+						filesExtracted = 0;
+						currentExtraction = patchFile[i];
+						zip.ExtractProgress += new EventHandler<ExtractProgressEventArgs>(ExtractionProgress);
+						zip.ExtractAll(tempFolder, ExtractExistingFileAction.OverwriteSilently);
+					}else{
+						ZipFiles.Insert(0, zip);
+					}
 				}
 			}		
 			
@@ -268,24 +379,29 @@ public class KHPCPatchManager{
 				string patchFolder = Path.Combine(tempFolder, khFiles[patchType][i]);
 				string epicPkgBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + (!backupPKG ? "_" + timestamp : "") + ".pkg");
 				string epicHedBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + (!backupPKG ? "_" + timestamp : "") + ".hed");
-				if(Directory.Exists(patchFolder) && File.Exists(epicFile)){
-					foundFolder = true;
-					if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
-					File.Move(epicFile, epicPkgBackupFile);
-					if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
-					File.Move(epicHedFile, epicHedBackupFile);
-					backgroundWorker1.ReportProgress(0, $"Patching {khFiles[patchType][i]}...");
-					backgroundWorker1.PKG = khFiles[patchType][i];
-					OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, patchFolder, epicFolder, backgroundWorker1);
-					if(!backupPKG){
+
+				try{
+					if(((!extractPatch && OpenKh.Egs.ZipManager.DirectoryExists(khFiles[patchType][i])) || (extractPatch && Directory.Exists(patchFolder))) && File.Exists(epicFile)){
+						foundFolder = true;
 						if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
-						File.Move(Path.Combine(epicFolder, khFiles[patchType][i] + "_" + timestamp + ".pkg"), Path.Combine(epicFolder, khFiles[patchType][i] + ".pkg"));
+						File.Move(epicFile, epicPkgBackupFile);
 						if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
-						File.Move(Path.Combine(epicFolder, khFiles[patchType][i] + "_" + timestamp + ".hed"), Path.Combine(epicFolder, khFiles[patchType][i] + ".hed"));
+						File.Move(epicHedFile, epicHedBackupFile);
+						backgroundWorker1.ReportProgress(0, $"Patching {khFiles[patchType][i]}...");
+						backgroundWorker1.PKG = khFiles[patchType][i];
+							OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, (!extractPatch ? khFiles[patchType][i] : patchFolder), epicFolder, backgroundWorker1);
+						if(!backupPKG){
+							if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
+							File.Move(Path.Combine(epicFolder, khFiles[patchType][i] + "_" + timestamp + ".pkg"), Path.Combine(epicFolder, khFiles[patchType][i] + ".pkg"));
+							if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
+							File.Move(Path.Combine(epicFolder, khFiles[patchType][i] + "_" + timestamp + ".hed"), Path.Combine(epicFolder, khFiles[patchType][i] + ".hed"));
+						}
 					}
+				}catch(Exception ex){
+					Console.WriteLine(ex.ToString());
 				}
 			}
-			Directory.Delete(tempFolder, true);
+			if(extractPatch && Directory.Exists(tempFolder)) Directory.Delete(tempFolder, true);
 			if(!foundFolder){
 				string error = "Could not find any folder to patch!\nMake sure you are using the correct path for the \"en\" folder!";
 				Console.WriteLine(error);
@@ -346,6 +462,12 @@ public class KHPCPatchManager{
 		backupOption.Checked = true;
 		backupOption.Click += (s,e) => backupOption.Checked = !backupOption.Checked;
         item.MenuItems.AddRange(new MenuItem[]{backupOption});
+		
+		MenuItem extractOption = new MenuItem();
+		extractOption.Text = "Extract patch before applying";
+		extractOption.Checked = false;
+		extractOption.Click += (s,e) => extractOption.Checked = !extractOption.Checked;
+        item.MenuItems.AddRange(new MenuItem[]{extractOption});
 		
 		item = new MenuItem("?");
         f.Menu.MenuItems.Add(item);
@@ -447,7 +569,8 @@ public class KHPCPatchManager{
 							selPatchButton.Enabled = false;
 							applyPatchButton.Enabled = false;
 							backupOption.Enabled = false;
-							ApplyPatch(patchFiles.ToList(), patchType[0], epicFolder, backupOption.Checked);
+							extractOption.Enabled = false;
+							ApplyPatch(patchFiles.ToList(), patchType[0], epicFolder, backupOption.Checked, extractOption.Checked);
 						}else{
 							MessageBox.Show("Could not find \"\\Image\\en\" in the provided folder!\nPlease try again by selecting the correct folder.");
 						}
@@ -457,7 +580,7 @@ public class KHPCPatchManager{
 				selPatchButton.Enabled = false;
 				applyPatchButton.Enabled = false;
 				backupOption.Enabled = false;
-				ApplyPatch(patchFiles.ToList(), patchType[0], epicFolder, backupOption.Checked);
+				ApplyPatch(patchFiles.ToList(), patchType[0], epicFolder, backupOption.Checked, extractOption.Checked);
 			}
 		};
 		f.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);

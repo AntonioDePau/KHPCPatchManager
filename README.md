@@ -11,6 +11,15 @@
 3. Extract a PKG file by dragging its .hed onto the exe
 4. A folder <pkg_name>.hed_out will be created containing all extracted files from that PKG
 
+## How to extract RAW game files:
+RAW files contain the header data for both original and remastered assets, as well as the assets' data itself (encrypted and compressed where applicable)
+1. Download the [latest release](https://github.com/AntonioDePau/KHPCPatchManager/releases) or compile the binary yourself
+2. Make sure you have a "resources" folder (in the same directory as the tool) with all the .txt containing the files' names (you can get one along with a release)
+3. Open a command line (CMD, PowerShell) in the directory where the exe is located
+4. Use the following command: KHPCPatchManager <hed you want to extract> -raw
+   (eg: _KHPCPatchManager kh2_sixth.hed -raw_
+5. A folder <pkg_name>.hed_out will be created containing all the extracted RAW files from that PKG
+
 ## How to create a patch:
 1. Download the [latest release](https://github.com/AntonioDePau/KHPCPatchManager/releases) or compile the binary yourself
 2. Make sure you have a "resources" folder (in the same directory as the tool) with all the .txt containing the files' names (you can get one along with a release)
@@ -33,6 +42,16 @@ MyPatch
                 ├── -4.dds
                 └── -5.dds
 ```
+**_Note_**: You can also patch RAW files if necessary
+```
+MyPatch
+└── kh2_sixth
+    ├── original
+    ├── remastered
+    └── raw
+        └── obj
+            └── P_EX100.mdlx
+```
 5. Drag your "MyPatch" folder onto the exe
 6. A "MyPatch" with the game's patch extension will be created
 
@@ -43,7 +62,7 @@ As long as the user keeps these new entries in their "custom_filenames.txt" file
 ## A huge thank you to:
 - Noxalus: https://github.com/Noxalus/OpenKh/tree/feature/egs-hed-packer
 - Xeeynamo and the whole OpenKH team: https://github.com/Xeeynamo/OpenKh
-- DemonBoy (aka: DA) for making custom HD assets for custom MDLX files possible
+- DemonBoy (aka: DA) for making custom HD assets for custom SD files possible
 - TieuLink for extensive testing and help in debugging
 
 ## Financial support
