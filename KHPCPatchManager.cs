@@ -177,6 +177,9 @@ public class KHPCPatchManager{
 		}},
 		{"COM", new string[]{
 			"Recom"
+		}},
+		{"MARE", new string[]{
+			"Mare"
 		}}
 	};
 
@@ -237,6 +240,9 @@ public class KHPCPatchManager{
 				}else if(Path.GetExtension(args[i]) == ".dddpcpatch"){
 					patchType.Add("DDD");
 					originFolder.Add(args[i]);
+				}else if(Path.GetExtension(args[i]) == ".marepcpatch"){
+					patchType.Add("MARE");
+					originFolder.Add(args[i]);
 				}else if(args[i] == "-extract"){
 					extractPatch = true;
 				}else if(args[i] == "-nobackup"){
@@ -275,6 +281,8 @@ public class KHPCPatchManager{
 							zip.Save("MyPatch.bbspcpatch");
 						}else if (Directory.Exists(patchFolders[i] + @"\kh3d_first") || Directory.Exists(patchFolders[i] + @"\kh3d_second") || Directory.Exists(patchFolders[i] + @"\kh3d_third") || Directory.Exists(patchFolders[i] + @"\kh3d_fourth")){
 							zip.Save("MyPatch.dddpcpatch");
+						}else if (Directory.Exists(patchFolders[i] + @"\Mare")){
+							zip.Save("MyPatch.marepcpatch");
 						}
 					}
 				}
@@ -289,8 +297,8 @@ public class KHPCPatchManager{
 				Console.WriteLine("\nHow to use KHPCPatchManager in CLI:");
 				Console.WriteLine("- Feed a .hed file to unpack the associated .pkg file:\n  khpcpatchmanager <hed_file>\n");
 				Console.WriteLine("- Feed a .pkg file and its unpacked folder to patch it:\n  khpcpatchmanager <pkg_file> <unpacked_pkg_folder>\n");
-				Console.WriteLine("- Feed a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch or a dddpcpatch:\n  khpcpatchmanager <unpacked_pkg_folder>\n");
-				Console.WriteLine("- Feed a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch or a dddpcpatch to patch your .pkgs:\n  khpcpatchmanager <.[kh1/com/kh2/bbs/ddd]pcpatch file>\n");
+				Console.WriteLine("- Feed a folder(s) (extracted .pkg format) to create a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch, marepcpatch or a dddpcpatch:\n  khpcpatchmanager <unpacked_pkg_folder>\n");
+				Console.WriteLine("- Feed a kh1pcpatch, kh2pcpatch, bbspcpatch, compcpatch, marepcpatch or a dddpcpatch to patch your .pkgs:\n  khpcpatchmanager <.[kh1/com/kh2/bbs/ddd/mare]pcpatch file>\n");
 			}else{
 				InitUI();
 			}
@@ -325,15 +333,20 @@ public class KHPCPatchManager{
 		Console.WriteLine("Applying " + patchType + " patch...");
 		if(epicFolder == null){
 			epicFolder = @"C:\Program Files\Epic Games\KH_1.5_2.5\Image\en\";
+			if(patchType == "MARE") epicFolder = @"C:\Program Files\Epic Games\KH_1.5_2.5\Image\";
 			if(patchType == "DDD") epicFolder = null;
 		}
 		while(!Directory.Exists(epicFolder)){
-			if (patchType == "KH1" || patchType == "KH2" || patchType == "BBS"|| patchType == "COM") {
+			if (patchType == "KH1" || patchType == "KH2" || patchType == "BBS" || patchType == "COM") {
 				Console.WriteLine("If you want to patch KH1, KH2, Recom or BBS, please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here, and press Enter:");
 				epicFolder = Console.ReadLine().Trim('"');
 			}
 			else if (patchType == "DDD"){
 				Console.WriteLine("If you want to patch Dream Drop Distance, please drag your \"en\" folder (the one that contains kh3d_first, kh3d_second, etc.) located under \"Kingdom Hearts HD 2 8 Final Chapter Prologue/Image/\" here, and press Enter:");
+				epicFolder = Console.ReadLine().Trim('"');
+			}
+			else if (patchType == "MARE"){
+				Console.WriteLine("If you want to patch 358/2 Days or Re:Coded, please drag your \"Image\" folder (the one that contains Mare.hed) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/\" here, and press Enter:");
 				epicFolder = Console.ReadLine().Trim('"');
 			}
 		}
