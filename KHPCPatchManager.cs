@@ -432,17 +432,24 @@ public class KHPCPatchManager{
 		List<string> subImageFolders = new List<string>{"en", "dt"};
 
 		string finalFolder = null;
+		bool multipleDetected = false;
 
 		if(root == null){
 			defaultRoots.ForEach(defaultRoot => {
 				subImageFolders.ForEach(subImageFolder => {
 					string temporaryFolder = Path.Combine(defaultRoot, subImageFolder);
 					if(Directory.Exists(temporaryFolder)){
+						if(finalFolder != null){
+							multipleDetected = true;
+							return;
+						}
 						finalFolder = temporaryFolder;
 						return;
 					}
 				});
 			});
+
+			if(multipleDetected) return null;
 
 			return finalFolder;
 		}
@@ -591,7 +598,7 @@ public class KHPCPatchManager{
 		applyPatchButton.Click += (s,e) => {
 			if(!Directory.Exists(KHFolder) || patchType[0] == "DDD"){ 
 				using(FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog()){
-					folderBrowserDialog.Description = "Could not find the installation path for Kingdom Hearts on this PC!\nPlease browse for the \"Epic Games\\KH_1.5_2.5\" or \"Steam\\steamapps\\common\\KINGDOM HEARTS -HD 1.5+2.5 ReMIX-\" (or \"2.8\" for DDD) folder.";
+					folderBrowserDialog.Description = "Could not find the installation path for Kingdom Hearts on this PC or found an ambiguity!\nPlease browse for the \"Epic Games\\KH_1.5_2.5\" or \"Steam\\steamapps\\common\\KINGDOM HEARTS -HD 1.5+2.5 ReMIX-\" (or \"2.8\" for DDD) folder.";
 					if(folderBrowserDialog.ShowDialog() == DialogResult.OK){
 						string temp = GetKHFolder(Path.Combine(folderBrowserDialog.SelectedPath, "Image"));
 						if(Directory.Exists(temp)){
