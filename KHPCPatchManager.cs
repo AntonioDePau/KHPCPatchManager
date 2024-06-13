@@ -321,20 +321,20 @@ public class KHPCPatchManager{
 	}
 	
 	public static List<ZipFile> ZipFiles;
-	static void ApplyPatch(List<string> patchFile, string patchType, string epicFolder = null, bool backupPKG = true, bool extractPatch = false){
+	static void ApplyPatch(List<string> patchFile, string patchType, string KHFolder = null, bool backupPKG = true, bool extractPatch = false){
 		Console.WriteLine("Applying " + patchType + " patch...");
-		if(epicFolder == null){
-			epicFolder = @"C:\Program Files\Epic Games\KH_1.5_2.5\Image\en\";
-			if(patchType == "DDD") epicFolder = null;
+		if(KHFolder == null){
+			KHFolder = GetKHFolder();
+			if(patchType == "DDD") KHFolder = null;
 		}
-		while(!Directory.Exists(epicFolder)){
+		while(!Directory.Exists(KHFolder)){
 			if (patchType == "KH1" || patchType == "KH2" || patchType == "BBS"|| patchType == "COM") {
-				Console.WriteLine("If you want to patch KH1, KH2, Recom or BBS, please drag your \"en\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" here, and press Enter:");
-				epicFolder = Console.ReadLine().Trim('"');
+				Console.WriteLine("If you want to patch KH1, KH2, Recom or BBS, please drag your \"en\" or \"dt\" folder (the one that contains kh1_first, kh1_second, etc.) located under \"Kingdom Hearts HD 1 5 and 2 5 ReMIX/Image/\" or \"Steam/steamapps/common/KINGDOM HEARTS -HD 1.5+2.5 ReMIX-/Image/\" here, and press Enter:");
+				KHFolder = Console.ReadLine().Trim('"');
 			}
 			else if (patchType == "DDD"){
 				Console.WriteLine("If you want to patch Dream Drop Distance, please drag your \"en\" folder (the one that contains kh3d_first, kh3d_second, etc.) located under \"Kingdom Hearts HD 2 8 Final Chapter Prologue/Image/\" here, and press Enter:");
-				epicFolder = Console.ReadLine().Trim('"');
+				KHFolder = Console.ReadLine().Trim('"');
 			}
 		}
 		string timestamp = DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss_ms");
@@ -351,7 +351,7 @@ public class KHPCPatchManager{
 			if(GUI_Displayed) status.Text = (string)e.UserState;
 		};
 		backgroundWorker1.DoWork += (s,e) => {
-			string epicBackup = Path.Combine(epicFolder, "backup");
+			string epicBackup = Path.Combine(KHFolder, "backup");
 			Directory.CreateDirectory(epicBackup);
 			
 			ZipFiles = new List<ZipFile>();
@@ -374,8 +374,8 @@ public class KHPCPatchManager{
 			bool foundFolder = false;
 			for(int i=0;i<khFiles[patchType].Length;i++){
 				backgroundWorker1.ReportProgress(0, $"Searching {khFiles[patchType][i]}...");
-				string epicFile = Path.Combine(epicFolder, khFiles[patchType][i] + ".pkg");
-				string epicHedFile = Path.Combine(epicFolder, khFiles[patchType][i] + ".hed");
+				string epicFile = Path.Combine(KHFolder, khFiles[patchType][i] + ".pkg");
+				string epicHedFile = Path.Combine(KHFolder, khFiles[patchType][i] + ".hed");
 				string patchFolder = Path.Combine(tempFolder, khFiles[patchType][i]);
 				string epicPkgBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + (!backupPKG ? "_" + timestamp : "") + ".pkg");
 				string epicHedBackupFile = Path.Combine(epicBackup, khFiles[patchType][i] + (!backupPKG ? "_" + timestamp : "") + ".hed");
@@ -389,12 +389,12 @@ public class KHPCPatchManager{
 						File.Move(epicHedFile, epicHedBackupFile);
 						backgroundWorker1.ReportProgress(0, $"Patching {khFiles[patchType][i]}...");
 						backgroundWorker1.PKG = khFiles[patchType][i];
-							OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, (!extractPatch ? khFiles[patchType][i] : patchFolder), epicFolder, backgroundWorker1);
+							OpenKh.Egs.EgsTools.Patch(epicPkgBackupFile, (!extractPatch ? khFiles[patchType][i] : patchFolder), KHFolder, backgroundWorker1);
 						if(!backupPKG){
 							if(File.Exists(epicPkgBackupFile)) File.Delete(epicPkgBackupFile);
-							File.Move(Path.Combine(epicFolder, khFiles[patchType][i] + "_" + timestamp + ".pkg"), Path.Combine(epicFolder, khFiles[patchType][i] + ".pkg"));
+							File.Move(Path.Combine(KHFolder, khFiles[patchType][i] + "_" + timestamp + ".pkg"), Path.Combine(KHFolder, khFiles[patchType][i] + ".pkg"));
 							if(File.Exists(epicHedBackupFile)) File.Delete(epicHedBackupFile);
-							File.Move(Path.Combine(epicFolder, khFiles[patchType][i] + "_" + timestamp + ".hed"), Path.Combine(epicFolder, khFiles[patchType][i] + ".hed"));
+							File.Move(Path.Combine(KHFolder, khFiles[patchType][i] + "_" + timestamp + ".hed"), Path.Combine(KHFolder, khFiles[patchType][i] + ".hed"));
 						}
 					}
 				}catch(Exception ex){
