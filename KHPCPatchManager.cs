@@ -426,6 +426,37 @@ public class KHPCPatchManager{
 		backgroundWorker1.WorkerReportsProgress = true;
 		backgroundWorker1.RunWorkerAsync();
 	}
+
+	static string GetKHFolder(string root = null){
+		List<string> defaultRoots = new List<string>{@"C:\Program Files\Epic Games\KH_1.5_2.5\Image", @"C:\Program Files (x86)\Steam\steamapps\common\KINGDOM HEARTS -HD 1.5+2.5 ReMIX-\Image"};
+		List<string> subImageFolders = new List<string>{"en", "dt"};
+
+		string finalFolder = null;
+
+		if(root == null){
+			defaultRoots.ForEach(defaultRoot => {
+				subImageFolders.ForEach(subImageFolder => {
+					string temporaryFolder = Path.Combine(defaultRoot, subImageFolder);
+					if(Directory.Exists(temporaryFolder)){
+						finalFolder = temporaryFolder;
+						return;
+					}
+				});
+			});
+
+			return finalFolder;
+		}
+
+		subImageFolders.ForEach(subImageFolder => {
+			string temporaryFolder = Path.Combine(root, subImageFolder);
+			if(Directory.Exists(temporaryFolder)){
+				finalFolder = temporaryFolder;
+				return;
+			};
+		});
+
+		return finalFolder;
+	}
 	
 	static StatusBar status = new StatusBar();
 	static Button selPatchButton = new Button();
@@ -435,8 +466,7 @@ public class KHPCPatchManager{
 		UpdateResources();
 		GUI_Displayed = true;
 		var handle = GetConsoleWindow();
-		string defaultEpicFolder = @"C:\Program Files\Epic Games\KH_1.5_2.5\Image\en\";
-		string epicFolder = defaultEpicFolder;
+		string KHFolder = GetKHFolder();
 		string[] patchFiles = new string[]{};
 		Form f = new Form();
 		f.Icon = Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
@@ -559,20 +589,20 @@ public class KHPCPatchManager{
 		applyPatchButton.Enabled = false;
 		
 		applyPatchButton.Click += (s,e) => {
-			if(!Directory.Exists(epicFolder) || patchType[0] == "DDD"){ 
+			if(!Directory.Exists(KHFolder) || patchType[0] == "DDD"){ 
 				using(FolderBrowserDialog folderBrowserDialog = new FolderBrowserDialog()){
-					folderBrowserDialog.Description = "Could not find the installation path for Kingdom Hearts on this PC!\nPlease browse for the \"Epic Games\\KH_1.5_2.5\" (or \"2.8\" for DDD) folder.";
+					folderBrowserDialog.Description = "Could not find the installation path for Kingdom Hearts on this PC!\nPlease browse for the \"Epic Games\\KH_1.5_2.5\" or \"Steam\\steamapps\\common\\KINGDOM HEARTS -HD 1.5+2.5 ReMIX-\" (or \"2.8\" for DDD) folder.";
 					if(folderBrowserDialog.ShowDialog() == DialogResult.OK){
-						string temp = Path.Combine(folderBrowserDialog.SelectedPath, "Image\\en");
+						string temp = GetKHFolder(Path.Combine(folderBrowserDialog.SelectedPath, "Image"));
 						if(Directory.Exists(temp)){
-							epicFolder = temp;
+							KHFolder = temp;
 							selPatchButton.Enabled = false;
 							applyPatchButton.Enabled = false;
 							backupOption.Enabled = false;
 							extractOption.Enabled = false;
-							ApplyPatch(patchFiles.ToList(), patchType[0], epicFolder, backupOption.Checked, extractOption.Checked);
+							ApplyPatch(patchFiles.ToList(), patchType[0], KHFolder, backupOption.Checked, extractOption.Checked);
 						}else{
-							MessageBox.Show("Could not find \"\\Image\\en\" in the provided folder!\nPlease try again by selecting the correct folder.");
+							MessageBox.Show("Could not find \"\\Image\\en\" nor \"\\Image\\dt\" in the provided folder!\nPlease try again by selecting the correct folder.");
 						}
 					}
 				}
@@ -580,7 +610,7 @@ public class KHPCPatchManager{
 				selPatchButton.Enabled = false;
 				applyPatchButton.Enabled = false;
 				backupOption.Enabled = false;
-				ApplyPatch(patchFiles.ToList(), patchType[0], epicFolder, backupOption.Checked, extractOption.Checked);
+				ApplyPatch(patchFiles.ToList(), patchType[0], KHFolder, backupOption.Checked, extractOption.Checked);
 			}
 		};
 		f.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
