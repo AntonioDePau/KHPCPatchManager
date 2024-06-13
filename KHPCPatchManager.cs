@@ -333,7 +333,7 @@ public class KHPCPatchManager{
 				KHFolder = Console.ReadLine().Trim('"');
 			}
 			else if (patchType == "DDD"){
-				Console.WriteLine("If you want to patch Dream Drop Distance, please drag your \"en\" folder (the one that contains kh3d_first, kh3d_second, etc.) located under \"Kingdom Hearts HD 2 8 Final Chapter Prologue/Image/\" here, and press Enter:");
+				Console.WriteLine("If you want to patch Dream Drop Distance, please drag your \"en\" or \"dt\" folder (the one that contains kh3d_first, kh3d_second, etc.) located under \"Kingdom Hearts HD 2 8 Final Chapter Prologue/Image/\" here, and press Enter:");
 				KHFolder = Console.ReadLine().Trim('"');
 			}
 		}
@@ -403,7 +403,7 @@ public class KHPCPatchManager{
 			}
 			if(extractPatch && Directory.Exists(tempFolder)) Directory.Delete(tempFolder, true);
 			if(!foundFolder){
-				string error = "Could not find any folder to patch!\nMake sure you are using the correct path for the \"en\" folder!";
+				string error = "Could not find any folder to patch!\nMake sure you are using the correct path for the \"en\" or \"dt\" folder!";
 				Console.WriteLine(error);
 				if(GUI_Displayed) status.Text = "";
 				if(GUI_Displayed) MessageBox.Show(error);
