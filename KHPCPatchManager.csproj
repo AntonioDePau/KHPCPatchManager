@@ -1,51 +1,33 @@
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-	<LangVersion>9.0</LangVersion>
-	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <TargetFramework>net5.0</TargetFramework>
-	<PublishReadyToRun>true</PublishReadyToRun>
-	<PublishSingleFile>true</PublishSingleFile>
-	<IncludeSymbolsInSingleFile>true</IncludeSymbolsInSingleFile>
-	<IncludeAllContentsInSingleFile>true</IncludeAllContentsInSingleFile>
-	<SelfContained>true</SelfContained>
-	<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-	<GenerateBindingRedirectsOutputType>false</GenerateBindingRedirectsOutputType>
-	<UseAppHost>true</UseAppHost>
-	<Optimize>true</Optimize>
-	<PlatformTarget>x64</PlatformTarget>
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="KHPCPatchManager.cs" />
-	<Compile Include="OpenKH\*.cs" />
-	<Compile Include="OpenKH\Xe.BinaryMapper\*.cs" />
-	<Compile Include="OpenKH\KH2\*.cs" />
-	<Compile Include="System\*.cs" />
-  </ItemGroup>
-  <ItemGroup>
-	<Compile Include="AssemblyInfo.cs" />
-  </ItemGroup>
-  <ItemGroup>
-   <!--<PackageReference Include="DotNetZip" Version="1.15.0" />-->
-   <!--<PackageReference Include="DotNetZip.dll" Version="1.15.0">
-		 <IncludeAssets>all</IncludeAssets>
-	</PackageReference>-->
-   <!-- <PackageReference Include="Ionic.Zlib.dll" Version="1.9.1.5" />-->
-	<!--<Reference Include="DotNetZip">
-		<HintPath>DotNetZip.dll</HintPath>
-		<Version>1.15.0</Version>
-		<IncludeAssets>all</IncludeAssets>
-	</Reference>-->
-	<Reference Include="./packages/DotNetZip.dll" />
-  </ItemGroup>
-  <ItemGroup>
-	<EmbeddedResource Include="./packages/DotNetZip.dll" />
-	<EmbeddedResource Include="./resources.zip" />
-	<EmbeddedResource Include="./kh.ico" />
-  </ItemGroup>
-  <PropertyGroup>
-	<applicationicon>kh.ico</applicationicon>
-  </PropertyGroup>
-  <Target Name="Build">
-    <Csc Sources="@(Compile)" References="@(Reference)" Resources="@(EmbeddedResource)" Win32Icon="kh.ico"/>  
-  </Target>
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net7.0</TargetFramework>
+		<SelfContained>true</SelfContained>
+		<IncludeSymbolsInSingleFile>true</IncludeSymbolsInSingleFile>
+		<IncludeAllContentsInSingleFile>true</IncludeAllContentsInSingleFile>
+		<UseAppHost>true</UseAppHost>
+		<Optimize>true</Optimize>
+		<PublishReadyToRun>true</PublishReadyToRun>
+		<PublishSingleFile>true</PublishSingleFile>
+		<AssemblyTitle>KHPCPatchManager</AssemblyTitle>
+		<Description>To create and apply patches for KHPC</Description>
+		<Company>DePaw</Company>
+		<Product>KHPCPatchManager</Product>
+		<Copyright>Copyright © 2021</Copyright>
+		<AssemblyVersion>1.3.0</AssemblyVersion>
+		
+	</PropertyGroup>
+	<ItemGroup>
+		<EmbeddedResource Include="./resources.zip" />
+		<EmbeddedResource Include="./kh.ico" />
+	</ItemGroup>
+	<ItemGroup>
+	  <PackageReference Include="DotNetZip" Version="1.16.0" />
+	  <PackageReference Include="GtkSharp" Version="3.24.24.95" />
+	  <PackageReference Include="WebkitGtkSharp" Version="3.24.24.95" />
+	</ItemGroup>
+	<Target Name="Build">
+		<Csc Sources="@(Compile)" References="@(Reference)" Resources="@(EmbeddedResource)" Win32Icon="kh.ico"/>
+	</Target>
 </Project>
